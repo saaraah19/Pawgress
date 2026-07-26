@@ -1,0 +1,4 @@
+{
+  "input": "This weekend I want to clean the garage, finally start reading that book Sarah lent me, and if I have time, prep meals for next week.",
+  "raw_response": "{\n  \"tasks\": [\n    {\n      \"title\": \"clean the garage\",\n      \"category\": \"Cleaning\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    },\n    {\n      \"title\": \"start reading that book Sarah lent me\",\n      \"category\": \"Reading\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    },\n    {\n      \"title\": \"prep meals for next week\",\n      \"category\": \"Meal Prep\",\n      \"priority\": \"Low\",\n      \"estimateMinutes\": null\n    }\n  ]\n}"
+}

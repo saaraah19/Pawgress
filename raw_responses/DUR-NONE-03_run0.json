@@ -1,0 +1,4 @@
+{
+  "input": "Sort out the thing with the neighbor.",
+  "raw_response": "{\n  \"tasks\": [\n    {\n      \"title\": \"Sort out the thing with the neighbor\",\n      \"category\": \"Neighbour\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    }\n  ]\n}"
+}

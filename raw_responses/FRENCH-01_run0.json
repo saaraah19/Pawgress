@@ -1,0 +1,4 @@
+{
+  "input": "Il faut que j'appelle le plombier pour la fuite dans la salle de bain, et aussi que je paie la facture d'\u00e9lectricit\u00e9 avant vendredi sinon \u00e7a va couper.",
+  "raw_response": "{\n  \"tasks\": [\n    {\n      \"title\": \"j'appelle le plombier pour la fuite dans la salle de bain\",\n      \"category\": \"Plomberie\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    },\n    {\n      \"title\": \"je paie la facture d'\u00e9lectricit\u00e9 avant vendredi sinon \u00e7a va couper\",\n      \"category\": \"Factures\",\n      \"priority\": \"High\",\n      \"estimateMinutes\": null\n    }\n  ]\n}"
+}

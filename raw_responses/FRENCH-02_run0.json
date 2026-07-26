@@ -1,0 +1,4 @@
+{
+  "input": "R\u00e9viser le rapport trimestriel pendant environ une heure ce soir.",
+  "raw_response": "{\n  \"tasks\": [\n    {\n      \"title\": \"R\u00e9viser le rapport trimestriel\",\n      \"category\": \"R\u00e9vision\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": 60\n    }\n  ]\n}"
+}

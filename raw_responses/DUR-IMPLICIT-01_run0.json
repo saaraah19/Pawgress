@@ -1,0 +1,4 @@
+{
+  "input": "Watch the quarterly all-hands recording I missed.",
+  "raw_response": "{\n  \"tasks\": [\n    {\n      \"title\": \"Watch the quarterly all-hands recording I missed\",\n      \"category\": \"Work\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    }\n  ]\n}"
+}

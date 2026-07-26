@@ -1,0 +1,4 @@
+{
+  "input": "Necesito llamar al banco ma\u00f1ana para preguntar sobre el cargo extra\u00f1o en mi cuenta.",
+  "raw_response": "{\n  \"tasks\": [\n    {\n      \"title\": \"Llamar al banco ma\u00f1ana para preguntar sobre el cargo extra\u00f1o en mi cuenta\",\n      \"category\": \"Finanzas\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    }\n  ]\n}"
+}

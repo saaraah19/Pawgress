@@ -1,0 +1,4 @@
+{
+  "input": "Need to email Jamie back about the proposal, pick up dry cleaning before it closes, and finally book the dentist appointment I've been putting off for weeks.",
+  "raw_response": "{\n  \"tasks\": [\n    {\n      \"title\": \"email Jamie back about the proposal\",\n      \"category\": \"Email\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    },\n    {\n      \"title\": \"pick up dry cleaning before it closes\",\n      \"category\": \"Errands\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    },\n    {\n      \"title\": \"book the dentist appointment I've been putting off for weeks\",\n      \"category\": \"Health\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    }\n  ]\n}"
+}

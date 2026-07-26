@@ -1,0 +1,4 @@
+{
+  "input": "Quick fifteen-minute task: renew the parking permit online.",
+  "raw_response": "{\"tasks\":[{\"title\":\"renew the parking permit online\",\"category\":\"Parking\",\"priority\":\"Medium\",\"estimateMinutes\":15}]}"
+}

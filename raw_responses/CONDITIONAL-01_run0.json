@@ -1,0 +1,4 @@
+{
+  "input": "If I have time this weekend, I might repaint the bathroom.",
+  "raw_response": "{\"tasks\":[{\"title\":\"repaint the bathroom\",\"category\":\"Home improvement\",\"priority\":\"Medium\",\"estimateMinutes\":null}]}"
+}

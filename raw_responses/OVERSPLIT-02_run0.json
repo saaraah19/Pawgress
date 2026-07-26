@@ -1,0 +1,4 @@
+{
+  "input": "Read the 3 chapters assigned for class and answer the 5 discussion questions before Thursday.",
+  "raw_response": "{\n  \"tasks\": [\n    {\n      \"title\": \"Read the 3 chapters assigned for class\",\n      \"category\": \"Reading\",\n      \"priority\": \"High\",\n      \"estimateMinutes\": null\n    },\n    {\n      \"title\": \"answer the 5 discussion questions before Thursday\",\n      \"category\": \"Discussion\",\n      \"priority\": \"High\",\n      \"estimateMinutes\": null\n    }\n  ]\n}"
+}

@@ -1,0 +1,4 @@
+{
+  "input": "need to figure out bday gift for dad idk what he even wants anymore lol also gotta renew my license before it expires next month i think",
+  "raw_response": "{\n  \"tasks\": [\n    {\n      \"title\": \"figure out bday gift for dad\",\n      \"category\": \"gift planning\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    },\n    {\n      \"title\": \"renew my license before it expires next month\",\n      \"category\": \"license renewal\",\n      \"priority\": \"High\",\n      \"estimateMinutes\": null\n    }\n  ]\n}"
+}

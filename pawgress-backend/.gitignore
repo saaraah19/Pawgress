@@ -1,0 +1,31 @@
+# --- Secrets — never commit these ---
+.env
+.env.local
+*.env
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+build/
+dist/
+
+# --- Virtual environment ---
+.venv/
+venv/
+env/
+
+# --- IDE (PyCharm) ---
+.idea/
+
+# --- OS clutter ---
+.DS_Store
+Thumbs.db
+
+# --- Frontend (React, once that's added) ---
+node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env

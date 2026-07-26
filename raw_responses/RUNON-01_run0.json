@@ -1,0 +1,4 @@
+{
+  "input": "ok so today was a mess I need to follow up with the contractor about the quote and also I keep forgetting to renew my passport before the trip and honestly I should probably also just sit down and figure out my budget for next month because I have no idea where the money's going",
+  "raw_response": "{\n  \"tasks\": [\n    {\n      \"title\": \"follow up with the contractor about the quote\",\n      \"category\": \"contractor communication\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    },\n    {\n      \"title\": \"renew my passport before the trip\",\n      \"category\": \"passport renewal\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    },\n    {\n      \"title\": \"figure out my budget for next month\",\n      \"category\": \"budget planning\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": null\n    }\n  ]\n}"
+}

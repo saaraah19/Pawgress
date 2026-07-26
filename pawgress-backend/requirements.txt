@@ -1,0 +1,26 @@
+# --- Pinned exactly: pure-Python packages, no compiled component, no risk
+#     of missing a prebuilt package for a newer Python version. ---
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+sqlalchemy==2.0.36
+python-jose[cryptography]==3.3.0
+openai>=1.57.0,<2.0.0
+python-dotenv==1.0.1
+
+# bcrypt itself (not through passlib — see identity/auth.py for why: passlib
+# 1.7.4 has a known crash-at-runtime incompatibility with bcrypt >=4.x).
+# Already confirmed in your install log to have a working cp39-abi3 wheel
+# (forward-compatible across Python versions), so no version-floor needed here.
+bcrypt==5.0.0
+
+# --- Minimum-version only, not pinned exactly: these have compiled (Rust/C)
+#     components. An exact old version can fail on a newer Python release if
+#     no prebuilt package was published for it yet — this already happened
+#     twice (psycopg, then pydantic-core) on Python 3.14. Using >= lets pip
+#     search all available versions for one that actually has a prebuilt
+#     package for your exact Python version, instead of gambling on one
+#     specific number. Upper-bounded below the next major version so pip
+#     can't jump to an untested future release that might break the code's
+#     syntax in a different way. ---
+psycopg[binary]>=3.2.10,<4.0.0
+pydantic[email]>=2.9.2,<3.0.0

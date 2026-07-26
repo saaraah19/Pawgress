@@ -1,0 +1,4 @@
+{
+  "input": "Block off 90 minutes to review the contract draft.",
+  "raw_response": "{\n  \"tasks\": [\n    {\n      \"title\": \"Block off 90 minutes to review the contract draft\",\n      \"category\": \"Contract review\",\n      \"priority\": \"Medium\",\n      \"estimateMinutes\": 90\n    }\n  ]\n}"
+}

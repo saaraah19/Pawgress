@@ -1,0 +1,4 @@
+{
+  "input": "Study statistics for two hours tonight.",
+  "raw_response": "{\"tasks\": [{\"title\": \"Study statistics for two hours tonight\", \"category\": \"Study\", \"priority\": \"Medium\", \"estimateMinutes\": 120}]}"
+}
