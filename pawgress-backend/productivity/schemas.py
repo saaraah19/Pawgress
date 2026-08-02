@@ -78,8 +78,16 @@ class CaptureResult(BaseModel):
 
 class TaskUpdateRequest(BaseModel):
     """Every field optional — a correction can touch just one field (FR-4.1),
-    with no confirmation step implied by the shape of this contract (FR-4.2)."""
+    with no confirmation step implied by the shape of this contract (FR-4.2).
+
+    `status` added per FR-3.3, which already names status alongside title/
+    category/priority/estimate as an approved MVP-editable field — this was
+    a contract omission against an already-settled requirement, not a new
+    product decision. Marking a task Done is the ordinary Completing-and-
+    Reflecting interaction (UX Philosophy §5.3), not an AI-field correction,
+    which is why it's excluded from correction-tracking in routes.py below."""
     title: Optional[str] = None
     category: Optional[str] = None
     priority: Optional[Literal["Low", "Medium", "High"]] = None
     estimateMinutes: Optional[int] = None
+    status: Optional[Literal["NotStarted", "Done"]] = None

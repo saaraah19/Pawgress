@@ -44,6 +44,7 @@ export interface TaskUpdateRequest {
   category?: string;
   priority?: Priority;
   estimateMinutes?: number | null;
+  status?: TaskStatus;
 }
 
 // --- identity/schemas.py ---

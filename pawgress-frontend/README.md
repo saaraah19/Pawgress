@@ -1,60 +1,106 @@
-# Pawgress Frontend — Slice 1, Piece 1 (Auth only)
+# Pawgress Frontend — Slice 1
 
-Scope of this piece: project scaffold, typed API client, Register/Login, and a
-placeholder authenticated screen that proves the token round-trips. No
-capture UI, no task list yet — that's the next piece.
+Since this is an existing folder (from Piece 1), just replace it wholesale
+with this new zip's contents rather than merging by hand — nothing here
+needs `npm install` re-run unless `package.json` changed (it hasn't since
+last time).
 
-## Setup
+## Setup (same as before)
 
-1. Make sure your backend is running locally (uvicorn, per its own README) —
-   default expected at `http://localhost:8000`.
-2. In this folder:
-   ```
-   npm install
-   copy .env.example .env
-   ```
-   (On Windows, `copy` is the built-in equivalent of `cp`. Edit `.env` only
-   if your backend isn't on `localhost:8000`.)
-3. Start the dev server:
-   ```
-   npm run dev
-   ```
-4. Open the URL Vite prints (default `http://localhost:5173`).
+1. Backend running locally, reachable at whatever `VITE_API_BASE_URL` in
+   your `.env` points to (you already confirmed `127.0.0.1:8000` works —
+   keep using that).
+2. `npm install` (only if you haven't already / package.json changed)
+3. `npm run dev`
 
-## What to test
+## What's new in this piece: the First Capture screen
 
-1. **Register** — go to `/register`, create an account with a real-looking
-   email and an 8+ character password. On success you should land on `/`
-   and see "You're logged in" with your user ID shown.
-2. **Duplicate email** — try registering the same email again. You should
-   see the backend's actual message ("An account with this email already
-   exists...") — not a generic error, and not a scary red banner.
-3. **Log out, then log back in** — click "Log out," you should land on
-   `/login`. Log back in with the same credentials — should land on `/`
-   again.
-4. **Wrong password** — try logging in with the wrong password. You should
-   see "Incorrect email or password." with the same calm styling, no red.
-5. **Session persistence** — while logged in, refresh the page (F5). You
-   should stay on `/` without being bounced to `/login` (FR-1.2). Then
-   close the tab entirely, reopen `http://localhost:5173` — should still be
-   logged in (token is in `localStorage`, 7-day expiry set server-side).
-6. **Route guard** — while logged out, try navigating directly to
-   `http://localhost:5173/` — should redirect to `/login`, not show a
-   broken page.
+After logging in, you now land on the actual capture screen instead of the
+placeholder — a text box, a Capture button, and the result shown
+immediately below it in the same view.
 
-## What's deliberately not here yet
+### What to test
 
-- No capture input, no extracted-task display, no task list, no correction
-  UI. Next piece.
-- No cat companion — out of scope for this slice per your instruction.
-- No password-reset / email-verification flow — not in the Functional
-  Requirements for MVP auth (FR-1.1–1.3 only cover creation + session
-  persistence).
+1. **A clear multi-item capture.** Try something like:
+   `"call the dentist and also pick up groceries and pay the electric bill before friday"`
+   You should see three separate task rows appear below the box, each
+   showing title / category / priority / estimate (if any). No
+   congratulatory message, no exclamation points — just the result.
+2. **The box clears itself** after a successful capture, ready for the next
+   one — you shouldn't have to manually clear it.
+3. **A genuinely non-actionable capture.** Try something like:
+   `"today was a pretty good day, nothing special happened"`
+   This should show a plain one-line message ("Nothing here needed turning
+   into a task.") — **not** an error, not a warning box. This is a
+   *successful* outcome per FR-2.2/the golden set's zero-task cases, and it
+   should read that way.
+4. **A genuine extraction failure**, if you can trigger one (e.g. by
+   stopping the AI provider, hitting a rate limit, or temporarily breaking
+   `GROQ_API_KEY` to force a `provider_error`): you should see your raw text
+   preserved on screen, a plain explanation, and a "Try again" button. Click
+   it — it should resubmit the same text as a new capture.
+5. **Priority/category/estimate display** — confirm nothing is color-coded
+   red/green/etc. Everything should read as plain neutral pill-shaped labels
+   regardless of whether priority is Low, Medium, or High.
 
-## Known gap carried forward from the backend contract
+## What's new in this piece: the flat task list + one-tap correction
 
-FR-2.7 requires a manual-fallback path when extraction fails ("retry or
-manually create a task from it"). The current backend contract has no
-`POST /tasks` for manual creation, so the failure-state UI (next piece)
-will only be able to offer **retry**, not manual entry. Flagged, not
-silently resolved — see the conversation where this was raised.
+Below the capture box, there's now a persistent list of **all** your tasks
+(not just the ones from your last capture) — this is `GET /tasks`, fetched
+fresh on page load and refreshed automatically right after every capture.
+
+Every field on every row is directly editable, in place:
+
+- **Title** and **Category** — click into the text, edit, then click
+  elsewhere (or press Enter) to save. No "Edit" button, no popup.
+- **Priority** — a plain dropdown; changing it saves immediately.
+- **Estimate (minutes)** — click in, type a number (or clear it entirely
+  for "no estimate"), click elsewhere to save.
+
+### What to test
+
+1. **Capture something, then look at the list below it.** The tasks you
+   just extracted should appear at the top of the persistent list too (not
+   just in the "just captured" panel above) — that's intentional, not a
+   duplicate-rendering bug.
+2. **Edit a title in place.** Click into any task's title, change it,
+   click away. It should just quietly update — no "Saved!" message, no
+   confirmation popup, no apologetic copy of any kind. Refresh the page —
+   the new title should still be there (confirms it actually persisted, not
+   just a visual illusion).
+3. **Change a priority via the dropdown.** Should save the instant you pick
+   a new value, no extra click needed.
+4. **Clear an estimate to blank**, click away — should save as "no
+   estimate" (shows as a blank field with a — placeholder, not a 0 or an
+   error).
+5. **Type garbage into the estimate field** (e.g. letters), click away —
+   should just revert to whatever the last valid value was, no error
+   message thrown at you.
+6. **Reload the whole page.** The task list (and any corrections you made)
+   should still be there, fetched fresh from the server — not lost.
+
+### What's new since the last piece: marking a task Done
+
+Each row now has a plain checkbox on the left. Clicking it toggles the task
+between Not Started and Done immediately — no confirmation, no "Task
+completed!" message, nothing added to the screen beyond the checkbox
+itself changing state and the title fading slightly (a quiet
+acknowledgment, per UX Philosophy §5.3 — ordinary completions don't get a
+celebration).
+
+### What to test
+
+1. **Click a checkbox.** It should check immediately, and the task's title
+   should fade to a muted gray — no strikethrough, no color badge, no popup.
+2. **Reload the page.** The checked state should still be there (confirms
+   it persisted through the real `PATCH` request, not just a visual toggle).
+3. **Uncheck it.** Should go back to normal immediately, same lack of
+   ceremony either direction.
+4. **Confirm no reactive copy anywhere** — no toast, no "nice work," no
+   sound. If you saw any of that, something's wrong; the product principle
+   here is genuinely "the checkbox is the whole acknowledgment."
+
+This required a small backend patch (`status` added to `TaskUpdateRequest`
+in `productivity/schemas.py` + `productivity/routes.py`) — make sure
+you've applied that before testing, or the toggle will fail silently
+against a backend that doesn't recognize the field.

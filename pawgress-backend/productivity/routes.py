@@ -22,6 +22,13 @@ from ai_extraction.provider import get_model_provider
 
 router = APIRouter(tags=["productivity"])
 
+# FR-4/BR-4 govern corrections on AI-ASSIGNED fields specifically — status
+# is excluded on purpose. Marking a task Done is the ordinary Completing-and-
+# Reflecting interaction (UX Philosophy §5.3), not "the AI got this wrong,"
+# so it must never write a FieldCorrectionRecord or count toward the
+# correction-rate metric (Blueprint §17).
+CORRECTION_TRACKED_FIELDS = {"title", "category", "priority", "estimateMinutes"}
+
 
 @router.post("/captures", response_model=CaptureResult)
 def create_capture(
@@ -64,16 +71,20 @@ def update_task(
     current_user: User = Depends(get_current_user),
 ):
     """
-    FR-4.1/4.2/4.3 — The Quiet Correction. One request, immediate effect, no
-    confirmation semantics anywhere in this contract, no reactive/apologetic
-    copy generated here (that's a frontend concern, but this endpoint doesn't
-    return anything that would prompt it either).
+    FR-3.3/FR-4.1/4.2/4.3 — manual editing of any field (including status,
+    per FR-3.3) plus the Quiet Correction on AI-assigned fields specifically.
+    One request, immediate effect, no confirmation semantics anywhere in
+    this contract, no reactive/apologetic copy generated here (that's a
+    frontend concern, but this endpoint doesn't return anything that would
+    prompt it either).
 
     Writes a FieldCorrectionRecord per changed field ONLY when the task's
-    origin is AIGenerated (correcting a manually-created task's own field
-    isn't "correcting the AI" — Domain Model §10.3: CorrectionTracker is
-    invoked "whenever a user changes an AI-assigned field"). This record is
-    never included in this endpoint's response (BR-4).
+    origin is AIGenerated AND the field is one of the AI-assigned fields
+    (Domain Model §10.3: CorrectionTracker is invoked "whenever a user
+    changes an AI-assigned field"). `status` is deliberately excluded from
+    this even on an AI-generated task — completing a task isn't a
+    correction. This record is never included in this endpoint's response
+    (BR-4).
     """
     task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
     if not task:
@@ -94,7 +105,11 @@ def update_task(
         # internal correction-rate metric (Blueprint §17) with false positives.
         old_comparable = old_value.value if hasattr(old_value, "value") else old_value
 
-        if track_corrections and old_comparable != new_value:
+        if (
+            track_corrections
+            and field_name in CORRECTION_TRACKED_FIELDS
+            and old_comparable != new_value
+        ):
             db.add(FieldCorrectionRecord(
                 id=uuid.uuid4(),
                 task_id=task.id,
