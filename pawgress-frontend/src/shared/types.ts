@@ -1,9 +1,6 @@
 /**
  * Mirrors the backend's Pydantic response/request models exactly
- * (productivity/schemas.py, identity/schemas.py). Kept as a single source of
- * truth on the frontend side so every feature imports from here rather than
- * redefining shapes locally — a field rename on the backend should surface
- * as a compile error here, not a silent runtime mismatch.
+ * (productivity/schemas.py, identity/schemas.py).
  */
 
 // --- Domain Model §7 enums, reproduced as literal unions ---
@@ -16,11 +13,18 @@ export type CaptureStatus = "Pending" | "Succeeded" | "Failed";
 export interface Task {
   id: string;
   title: string;
-  category: string;
+  category: string | null; // nullable — manual tasks may leave this unset (AC-3.4.1)
   priority: Priority;
   estimateMinutes: number | null;
   status: TaskStatus;
   origin: TaskOrigin;
+  goalId: string | null;
+  createdAt: string;
+}
+
+export interface Goal {
+  id: string;
+  label: string;
   createdAt: string;
 }
 
@@ -45,6 +49,14 @@ export interface TaskUpdateRequest {
   priority?: Priority;
   estimateMinutes?: number | null;
   status?: TaskStatus;
+  goalId?: string | null;
+}
+
+export interface ManualTaskCreateRequest {
+  title: string;
+  category?: string;
+  priority?: Priority;
+  estimateMinutes?: number;
 }
 
 // --- identity/schemas.py ---

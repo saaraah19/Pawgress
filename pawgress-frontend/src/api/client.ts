@@ -3,18 +3,13 @@ import type {
   CaptureResult,
   Task,
   TaskUpdateRequest,
+  Goal,
+  ManualTaskCreateRequest,
 } from "../shared/types";
 
 const API_BASE_URL: string =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
-/**
- * Carries the backend's own error message through to the UI rather than
- * replacing it with a generic frontend string. The backend's error copy is
- * deliberately written in the Assistant's plain, non-judgmental voice
- * (identity/routes.py, Brand §6 — "even system errors stay in the
- * Assistant's voice"), so re-wording it here would undo that work.
- */
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -47,8 +42,6 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    // FastAPI's default error shape is { "detail": "..." } — matches every
-    // handler in identity/routes.py and productivity/routes.py.
     let detail = `Request failed (${response.status})`;
     try {
       const errorBody = await response.json();
@@ -61,7 +54,12 @@ async function request<T>(
     throw new ApiError(response.status, detail);
   }
 
-  // No endpoint in this contract returns an empty body on success.
+  // DELETE /tasks/{id} and DELETE /goals/{id} return 204 No Content —
+  // .json() would throw on an empty body, so short-circuit here.
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return (await response.json()) as T;
 }
 
@@ -91,6 +89,10 @@ export function listTasks(token: string): Promise<Task[]> {
   return request<Task[]>("/tasks", { token });
 }
 
+export function createTask(payload: ManualTaskCreateRequest, token: string): Promise<Task> {
+  return request<Task>("/tasks", { method: "POST", body: payload, token });
+}
+
 export function updateTask(
   id: string,
   patch: TaskUpdateRequest,
@@ -101,4 +103,20 @@ export function updateTask(
     body: patch,
     token,
   });
+}
+
+export function deleteTask(id: string, token: string): Promise<void> {
+  return request<void>(`/tasks/${id}`, { method: "DELETE", token });
+}
+
+export function createGoal(label: string, token: string): Promise<Goal> {
+  return request<Goal>("/goals", { method: "POST", body: { label }, token });
+}
+
+export function listGoals(token: string): Promise<Goal[]> {
+  return request<Goal[]>("/goals", { token });
+}
+
+export function deleteGoal(id: string, token: string): Promise<void> {
+  return request<void>(`/goals/${id}`, { method: "DELETE", token });
 }
