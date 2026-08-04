@@ -6,3 +6,4 @@
  */
 export const TASKS_QUERY_KEY = ["tasks"] as const;
 export const GOALS_QUERY_KEY = ["goals"] as const;
+export const COMPANION_QUERY_KEY = ["companion", "state"] as const;

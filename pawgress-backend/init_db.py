@@ -13,7 +13,7 @@ from shared.database import Base, engine
 # Importing these registers their tables on Base.metadata — required even
 # though the names aren't used directly below.
 from identity.models import User  # noqa: F401
-from productivity.models import Capture, Task, FieldCorrectionRecord  # noqa: F401
+from productivity.models import Capture, Task, Goal, FieldCorrectionRecord  # noqa: F401
 
 if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
+import { CompanionIndicator } from "../../features/companion/CompanionIndicator";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { logout } = useAuth();
@@ -8,7 +9,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <span className="app-header-title">Pawgress</span>
+        <div className="app-header-brand">
+          <span className="app-header-title">Pawgress</span>
+          <CompanionIndicator />
+        </div>
         <nav className="app-nav">
           <Link className="link" to="/">
             Today

@@ -8,6 +8,7 @@ export type Priority = "Low" | "Medium" | "High";
 export type TaskStatus = "NotStarted" | "Done";
 export type TaskOrigin = "AIGenerated" | "ManuallyCreated";
 export type CaptureStatus = "Pending" | "Succeeded" | "Failed";
+export type CatMoodState = "Neutral" | "Attentive" | "Content";
 
 // --- productivity/schemas.py ---
 export interface Task {
@@ -26,6 +27,10 @@ export interface Goal {
   id: string;
   label: string;
   createdAt: string;
+}
+
+export interface CompanionState {
+  mood: CatMoodState;
 }
 
 export interface CaptureResponse {

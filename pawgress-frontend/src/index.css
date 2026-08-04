@@ -352,3 +352,74 @@ button.link {
 .field-title-done {
   color: var(--color-text-muted);
 }
+
+/* --- Manual task creation (FR-3.4) — an ordinary interaction, collapsed by
+   default to a single title field. Reuses .capture-form/.field-inline/
+   .primary/.link rather than introducing a second visual language for what
+   is functionally the same "type something, submit it" shape as capture. --- */
+
+.add-task-toggle {
+  align-self: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.manual-task-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.manual-task-form .capture-form {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.manual-task-form .capture-form .field-inline {
+  flex: 1;
+}
+
+.manual-task-details-toggle {
+  align-self: flex-start;
+  font-size: 0.85rem;
+}
+
+.manual-task-details {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.manual-task-details .field-inline {
+  flex: 1;
+}
+
+/* --- Cat Companion ambient indicator (FR-6.1) — small, quiet, peripheral.
+   Grouped with the app title rather than given its own header slot, so it
+   reads as "part of the brand" rather than a fourth competing nav item. --- */
+
+.app-header-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.companion-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.companion-glyph {
+  font-size: 0.85rem;
+  line-height: 1;
+}

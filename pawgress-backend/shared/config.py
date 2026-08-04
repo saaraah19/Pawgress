@@ -46,9 +46,14 @@ class Settings:
         return url
 
     # --- Auth ---
-    # Used to sign session tokens. Generate a real random secret for production —
-    # never use the fallback below outside local development.
-    jwt_secret: str = os.environ.get("JWT_SECRET", "dev-only-insecure-secret-change-me")
+    # Used to sign session tokens. No insecure fallback: an app whose session
+    # tokens can be forged by anyone who's read this file's git history is a
+    # real security hole, not a convenience worth keeping — so this is
+    # required at startup exactly like DATABASE_URL and GROQ_API_KEY below,
+    # rather than silently defaulting to a value that's public in source
+    # control. Generate one locally with:
+    #   python -c "import secrets; print(secrets.token_hex(32))"
+    jwt_secret: str = os.environ.get("JWT_SECRET", "")
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days — FR-1.2's
     # "stay authenticated across sessions" requirement, without building a
@@ -62,6 +67,26 @@ class Settings:
     # ai_extraction/prompt.py for the exact system prompt this was validated against.
     extraction_model: str = "openai/gpt-oss-120b"
 
+    # --- CORS ---
+    # Comma-separated list of allowed origins. Least-privilege (System
+    # Architecture §17) still applies — this is NOT a wildcard — but a
+    # single hardcoded origin turned out to be real local-dev friction:
+    # "localhost:5173" and "127.0.0.1:5173" are the same Vite dev server to
+    # a person, but two different origins to a browser's CORS check, and
+    # which one a given machine resolves by default varies (this is the
+    # same localhost/127.0.0.1 inconsistency already flagged for the
+    # Windows dev environment elsewhere in this project). Defaulting to
+    # both covers local dev without weakening anything for a real
+    # deployment, where FRONTEND_ORIGIN should still be set explicitly to
+    # the one real frontend URL.
+    frontend_origin: str = os.environ.get(
+        "FRONTEND_ORIGIN", "http://127.0.0.1:5173,http://localhost:5173"
+    )
+
+    @property
+    def frontend_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.frontend_origin.split(",") if origin.strip()]
+
     def validate(self) -> None:
         """Fail loudly at startup if required secrets are missing, rather than
         failing confusingly on the first real request."""
@@ -70,6 +95,8 @@ class Settings:
             missing.append("DATABASE_URL")
         if not self.groq_api_key:
             missing.append("GROQ_API_KEY")
+        if not self.jwt_secret:
+            missing.append("JWT_SECRET")
         if missing:
             raise RuntimeError(
                 f"Missing required environment variables: {', '.join(missing)}. "

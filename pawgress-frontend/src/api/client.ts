@@ -5,6 +5,7 @@ import type {
   TaskUpdateRequest,
   Goal,
   ManualTaskCreateRequest,
+  CompanionState,
 } from "../shared/types";
 
 const API_BASE_URL: string =
@@ -119,4 +120,8 @@ export function listGoals(token: string): Promise<Goal[]> {
 
 export function deleteGoal(id: string, token: string): Promise<void> {
   return request<void>(`/goals/${id}`, { method: "DELETE", token });
+}
+
+export function getCompanionState(token: string): Promise<CompanionState> {
+  return request<CompanionState>("/companion/state", { token });
 }

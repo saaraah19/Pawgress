@@ -67,18 +67,44 @@ class Capture(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+class Goal(Base):
+    """Domain Model §4.3 — a single, flat label a Task can optionally point to.
+    Deliberately minimal: no parent/child relationship, no deadline, no status
+    (Goal hierarchy is explicitly Version 2, Domain Model §13). Goal has no
+    reverse-navigable collection of Tasks as a first-class relationship —
+    "which tasks link to this goal" is a query (Task.goal_id lookup), not an
+    ownership relationship, per Domain Model §8's aggregate-boundary note."""
+    __tablename__ = "goals"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    label = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class Task(Base):
     """Domain Model §4.2 — the atomic unit of "something the user intends to do."
-    goal_id deliberately NOT included as a column yet — Domain Model Modeling
-    Principle 6 ("when in doubt, don't model it yet"); Sarah's explicit call
-    during the Slice 1 design discussion. Added when the Goals slice is built."""
+
+    goal_id: optional, single-valued reference to Goal (FR-5.2, Domain Model
+    §8). Nullable FK, no ON DELETE CASCADE — deletion is handled explicitly by
+    GoalDeletionService (goal_service.py) per Domain Model §10.5 / Invariant 9:
+    deleting a Goal unlinks referencing Tasks, it never deletes them. A DB-level
+    CASCADE would silently violate that invariant if anything ever deleted a
+    Goal by a path other than the service, so the unlink is done in application
+    code instead of relying on ON DELETE SET NULL.
+
+    category is nullable — AC-3.4.1: a manually-created task may leave
+    category unset entirely rather than having one inferred. AI-extracted
+    tasks always populate it (ExtractionService always returns a category),
+    so this relaxation only actually matters for the manual-creation path.
+    """
     __tablename__ = "tasks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String, nullable=False)
-    category = Column(String, nullable=False)  # free text, per Domain Model §6's
-    # resolved decision — never a constrained taxonomy
+    category = Column(String, nullable=True)  # free text, per Domain Model §6's
+    # resolved decision — never a constrained taxonomy; nullable per AC-3.4.1
     priority = Column(Enum(Priority, values_callable=lambda x: [e.value for e in x]),
                        nullable=False, default=Priority.MEDIUM)
     estimate_minutes = Column(Integer, nullable=True)  # nullable — see Domain
@@ -89,6 +115,7 @@ class Task(Base):
     origin = Column(Enum(TaskOrigin, values_callable=lambda x: [e.value for e in x]),
                      nullable=False)
     source_capture_id = Column(UUID(as_uuid=True), ForeignKey("captures.id"), nullable=True, index=True)
+    goal_id = Column(UUID(as_uuid=True), ForeignKey("goals.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 

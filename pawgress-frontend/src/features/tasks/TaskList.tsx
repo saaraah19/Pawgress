@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import { listTasks, updateTask, deleteTask, listGoals } from "../../api/client";
 import { TaskRow } from "./TaskRow";
+import { ManualTaskForm } from "./ManualTaskForm";
 import { TASKS_QUERY_KEY, GOALS_QUERY_KEY } from "../../shared/queryKeys";
 import type { Task, TaskUpdateRequest } from "../../shared/types";
 
@@ -91,6 +92,8 @@ export function TaskList() {
           All Tasks
         </button>
       </nav>
+
+      <ManualTaskForm />
 
       {visibleTasks.length === 0 ? (
         <p className="muted">
