@@ -7,12 +7,11 @@ interface TaskRowProps {
   onCommit: (patch: TaskUpdateRequest) => void;
   onDelete: () => void;
   saving: boolean;
-  deleting: boolean;
 }
 
 const PRIORITIES: Priority[] = ["Low", "Medium", "High"];
 
-export function TaskRow({ task, goals, onCommit, onDelete, saving, deleting }: TaskRowProps) {
+export function TaskRow({ task, goals, onCommit, onDelete, saving }: TaskRowProps) {
   const [title, setTitle] = useState(task.title);
   const [category, setCategory] = useState(task.category ?? "");
   const [estimateText, setEstimateText] = useState(
@@ -69,10 +68,13 @@ export function TaskRow({ task, goals, onCommit, onDelete, saving, deleting }: T
   }
 
   const linkedGoal = goals.find((g) => g.id === task.goalId) ?? null;
-  const disabled = saving || deleting;
+  const disabled = saving;
 
   return (
-    <li className={`task-row task-row-editable ${task.status === "Done" ? "task-row-done" : ""}`}>
+    <li
+      className={`task-row task-row-editable ${task.status === "Done" ? "task-row-done" : ""}`}
+      data-task-id={task.id}
+    >
       <input
         type="checkbox"
         className="task-status-checkbox"
@@ -83,6 +85,7 @@ export function TaskRow({ task, goals, onCommit, onDelete, saving, deleting }: T
       />
 
       <input
+        id={`task-title-${task.id}`}
         className={`field-inline field-title ${task.status === "Done" ? "field-title-done" : ""}`}
         value={title}
         disabled={disabled}
@@ -136,7 +139,7 @@ export function TaskRow({ task, goals, onCommit, onDelete, saving, deleting }: T
               {linkedGoal.label} ✕
             </button>
           ) : linking ? (
-            <span className="goal-picker">
+            <span className="goal-picker" role="group" aria-label={`Link "${task.title}" to a goal`}>
               {goals.map((g) => (
                 <button
                   key={g.id}

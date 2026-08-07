@@ -1,13 +1,22 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import { listTasks, updateTask, deleteTask, listGoals } from "../../api/client";
 import { TaskRow } from "./TaskRow";
 import { ManualTaskForm } from "./ManualTaskForm";
+import { useToast } from "../../shared/ui/ToastProvider";
 import { TASKS_QUERY_KEY, GOALS_QUERY_KEY } from "../../shared/queryKeys";
 import type { Task, TaskUpdateRequest } from "../../shared/types";
 
 type ViewMode = "today" | "all";
+
+// How long a deleted task stays reversible before the delete actually
+// commits to the server. Matches the toast's own auto-dismiss window
+// (shared/ui/ToastProvider.tsx's DEFAULT_DURATION_MS) so the toast
+// disappearing and the delete becoming permanent happen at the same
+// moment — a toast that outlives its own undo window (or vice versa)
+// would be a confusing, incoherent bit of feedback.
+const UNDO_WINDOW_MS = 5000;
 
 /**
  * FR-3.1 ("all active tasks") and FR-7.1 ("today's incomplete tasks") are
@@ -20,7 +29,16 @@ type ViewMode = "today" | "all";
 export function TaskList() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [view, setView] = useState<ViewMode>("today");
+
+  // Delete-with-undo (polish slice item 3): clicking Delete hides the row
+  // immediately and starts a grace-window timer, rather than either (a)
+  // deleting for real with no way back, or (b) a confirmation dialog,
+  // which AC-3.5.1 explicitly rules out. Nothing is sent to the server
+  // until the window elapses without an Undo.
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
+  const deleteTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const tasksQuery = useQuery({
     queryKey: TASKS_QUERY_KEY,
@@ -53,6 +71,55 @@ export function TaskList() {
     },
   });
 
+  // If the user navigates away mid-undo-window, honor the delete they
+  // already asked for rather than silently discarding it — the row is
+  // gone from their screen either way, so leaving it undeleted on the
+  // server would be a quiet, confusing inconsistency the next time they
+  // load the list. Calls the mutation directly rather than going through
+  // React state, since this runs during unmount.
+  useEffect(() => {
+    return () => {
+      deleteTimers.current.forEach((timer, id) => {
+        clearTimeout(timer);
+        deleteMutation.mutate(id);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleDeleteClick(task: Task) {
+    setPendingDeleteIds((prev) => new Set(prev).add(task.id));
+
+    const timer = setTimeout(() => {
+      deleteMutation.mutate(task.id);
+      deleteTimers.current.delete(task.id);
+      setPendingDeleteIds((prev) => {
+        const next = new Set(prev);
+        next.delete(task.id);
+        return next;
+      });
+    }, UNDO_WINDOW_MS);
+    deleteTimers.current.set(task.id, timer);
+
+    showToast({
+      message: `"${task.title}" deleted`,
+      actionLabel: "Undo",
+      durationMs: UNDO_WINDOW_MS,
+      onAction: () => {
+        const pendingTimer = deleteTimers.current.get(task.id);
+        if (pendingTimer) {
+          clearTimeout(pendingTimer);
+          deleteTimers.current.delete(task.id);
+        }
+        setPendingDeleteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(task.id);
+          return next;
+        });
+      },
+    });
+  }
+
   if (tasksQuery.isLoading) {
     return <p className="muted">Loading tasks...</p>;
   }
@@ -70,11 +137,13 @@ export function TaskList() {
 
   const allTasks = tasksQuery.data ?? [];
   const goals = goalsQuery.data ?? [];
-  const visibleTasks = view === "today" ? allTasks.filter((t) => t.status === "NotStarted") : allTasks;
+  const visibleTasks = (view === "today" ? allTasks.filter((t) => t.status === "NotStarted") : allTasks).filter(
+    (t) => !pendingDeleteIds.has(t.id)
+  );
 
   return (
     <div>
-      <nav className="view-toggle">
+      <nav className="view-toggle" role="group" aria-label="Task view">
         <button
           type="button"
           className="link"
@@ -107,9 +176,8 @@ export function TaskList() {
               task={task}
               goals={goals}
               saving={updateMutation.isPending && updateMutation.variables?.id === task.id}
-              deleting={deleteMutation.isPending && deleteMutation.variables === task.id}
               onCommit={(patch) => updateMutation.mutate({ id: task.id, patch })}
-              onDelete={() => deleteMutation.mutate(task.id)}
+              onDelete={() => handleDeleteClick(task)}
             />
           ))}
         </ul>

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type KeyboardEvent } from "react";
 
 interface CaptureFormProps {
   onSubmit: (rawText: string) => void;
@@ -16,11 +16,26 @@ interface CaptureFormProps {
 export function CaptureForm({ onSubmit, submitting, initialValue = "" }: CaptureFormProps) {
   const [text, setText] = useState(initialValue);
 
+  function submit() {
+    const trimmed = text.trim();
+    if (!trimmed || submitting) return;
+    onSubmit(trimmed);
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    onSubmit(trimmed);
+    submit();
+  }
+
+  // Cmd/Ctrl+Enter to submit — the single highest-leverage shortcut for a
+  // product whose core loop is "type, then act" (this interaction happens
+  // more than any other in the app). Plain Enter is left alone since a
+  // capture is often genuinely multi-line.
+  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      submit();
+    }
   }
 
   return (
@@ -28,8 +43,10 @@ export function CaptureForm({ onSubmit, submitting, initialValue = "" }: Capture
       <textarea
         className="capture-textarea"
         placeholder="What's on your mind?"
+        aria-label="Capture your thoughts"
         value={text}
         onChange={(e) => setText(e.target.value)}
+        onKeyDown={handleKeyDown}
         rows={4}
         disabled={submitting}
       />
@@ -39,3 +56,4 @@ export function CaptureForm({ onSubmit, submitting, initialValue = "" }: Capture
     </form>
   );
 }
+

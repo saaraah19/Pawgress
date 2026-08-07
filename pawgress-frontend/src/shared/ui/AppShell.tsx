@@ -8,12 +8,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <header className="app-header">
         <div className="app-header-brand">
           <span className="app-header-title">Pawgress</span>
           <CompanionIndicator />
         </div>
-        <nav className="app-nav">
+        <nav className="app-nav" aria-label="Main">
           <Link className="link" to="/">
             Today
           </Link>
@@ -28,7 +31,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           Log out
         </button>
       </header>
-      <main className="app-main">{children}</main>
+      <main id="main-content" className="app-main">
+        {children}
+      </main>
     </div>
   );
 }

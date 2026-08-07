@@ -16,10 +16,27 @@ export function CapturePage() {
 
   const mutation = useMutation({
     mutationFn: (rawText: string) => createCapture(rawText, token!),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setResult(data);
       setFormKey((k) => k + 1);
-      queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+      await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+
+      // Quiet Correction (UX Philosophy §5.2) is arguably as important as
+      // the capture itself — this moves attention straight to the first
+      // newly-created task's editable title in the persistent list below,
+      // so a keyboard-first user can start correcting immediately without
+      // reaching for the mouse or hunting for it on the page. Scrolls
+      // instantly rather than smoothly under prefers-reduced-motion.
+      const firstTaskId = data.tasks[0]?.id;
+      if (firstTaskId) {
+        requestAnimationFrame(() => {
+          const el = document.getElementById(`task-title-${firstTaskId}`);
+          if (!el) return;
+          const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+          (el as HTMLInputElement).focus({ preventScroll: true });
+        });
+      }
     },
   });
 

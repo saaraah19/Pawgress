@@ -28,9 +28,27 @@
   --color-surface: #faf7f1;
   --color-surface-raised: #ffffff;
   --color-border: #dbd2c1;
-  --color-border-strong: #c9bda6;
+  /* Bumped from the original #c9bda6 (1.74:1 on surface — invisible as a
+     boundary) to a value that actually clears WCAG 1.4.11's 3:1 non-text
+     contrast minimum for UI component boundaries, while staying in the
+     same warm-taupe family. */
+  --color-border-strong: #968862;
   --color-text: #28241f;
-  --color-text-muted: #867c6c;
+  /* Original --color-text-muted (#867c6c) measured 3.34:1 on this
+     background — fails WCAG AA's 4.5:1 for normal-size text, and this
+     token is used for real content (labels, quoted capture text), not
+     decoration. Darkened to #6b6153 (4.93:1 on bg, 5.68:1 on surface) —
+     still reads as clearly secondary to --color-text, now actually AA
+     compliant. Verified by computing WCAG relative-luminance contrast
+     directly, not eyeballed. */
+  --color-text-muted: #6b6153;
+  /* --color-text-faint is deliberately NOT contrast-corrected — it's
+     reserved for placeholder text only (WCAG doesn't require placeholder
+     copy to meet body-text contrast, since it's supplementary and
+     disappears on input). Anything that's real, persistent content
+     (labels, the capture-source line, the delete action) uses
+     --color-text-muted instead, below. Do not reuse this token for
+     anything a user is meant to actually read. */
   --color-text-faint: #a89e8d;
 
   /* Assistant voice — correctness-dependent UI only (structure, buttons,
@@ -40,8 +58,11 @@
   --color-assistant-tint: #e2e9e7;
 
   /* Cat voice — presence-only, peripheral. Never used structurally, never
-     on a button, never on anything the user must trust as correct. */
-  --color-cat: #b8935a;
+     on a button, never on anything the user must trust as correct.
+     Original #b8935a measured 2.32:1 against the header's surface
+     background — well under AA. Darkened to #89673a (4.83:1 on surface),
+     same brass hue, now legible as real text rather than decoration. */
+  --color-cat: #89673a;
   --color-cat-tint: #f2e8d8;
 
   /* No danger/red token exists. This is deliberate, not an omission —
@@ -69,6 +90,22 @@
   --radius-md: 10px;
   --radius-lg: 18px;
   --radius-pill: 999px;
+
+  /* --- Motion scale ---
+     Foundation for every animation/transition below, added deliberately
+     before any polish work so every micro-interaction shares one timing
+     feel rather than five slightly different ones (which reads as
+     inconsistent, not calm). --ease-quiet has no overshoot/bounce on
+     purpose — springiness reads as playful/gamified, which is exactly
+     the register this product avoids (Blueprint §3: "presence beats
+     gamification"). All of this is overridden to near-zero globally
+     under prefers-reduced-motion (see below), so using these tokens
+     everywhere is what makes that override actually effective — a
+     hardcoded transition-duration would slip through it. */
+  --duration-quick: 120ms;   /* hovers, focus rings, small state changes */
+  --duration-settle: 240ms;  /* fades, row transitions, toast entry */
+  --duration-ambient: 4000ms; /* slow, continuous companion motion */
+  --ease-quiet: cubic-bezier(0.33, 0, 0.2, 1);
 
   font-family: var(--font-body);
   color: var(--color-text);
@@ -111,6 +148,27 @@ a {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* --- Accessibility: skip link ---
+   Standard pattern: invisible until keyboard-focused, lets a keyboard
+   user bypass the header nav straight to the page content. Cheap, real
+   value for anyone not using a mouse — part of NFR-5's WCAG 2.1 AA
+   baseline, not previously implemented. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 2000;
+  background: var(--color-assistant);
+  color: var(--color-surface);
+  padding: 0.6rem 1rem;
+  border-radius: 0 0 var(--radius-sm) 0;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  left: 0;
 }
 
 /* ==========================================================================
@@ -164,7 +222,7 @@ a {
   font-size: 1rem;
   background: var(--color-surface-raised);
   color: var(--color-text);
-  transition: border-color 0.12s ease;
+  transition: border-color var(--duration-quick) var(--ease-quiet);
 }
 
 .field input:focus {
@@ -187,7 +245,7 @@ button.primary {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.12s ease;
+  transition: background-color var(--duration-quick) var(--ease-quiet);
 }
 
 button.primary:hover:not(:disabled) {
@@ -315,6 +373,34 @@ button.link:disabled {
 .companion-glyph {
   font-size: 0.85rem;
   line-height: 1;
+  display: inline-block;
+  transform-origin: 50% 80%;
+  /* Idle ambient presence (Brand §10 baseline, FR-6.1) — continuous,
+     slow, never draws the eye deliberately. Fully neutralized under
+     prefers-reduced-motion by the global rule below, since it uses the
+     shared --duration-ambient token rather than a hardcoded value. */
+  animation: companion-breathe var(--duration-ambient) var(--ease-quiet) infinite;
+}
+
+/* An occasional stretch, triggered rarely and briefly from JS
+   (CompanionIndicator.tsx) — not a persisted state, not a new
+   CatMoodState value (Domain Model §7 explicitly keeps that enum a
+   small, closed, presentation-only set — this is purely a client-side
+   animation variant layered on whichever mood is already showing). */
+.companion-glyph.is-stretching {
+  animation: companion-stretch 900ms var(--ease-quiet);
+}
+
+@keyframes companion-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes companion-stretch {
+  0% { transform: scale(1); }
+  35% { transform: scaleX(1.28) scaleY(0.82); }
+  65% { transform: scaleX(0.92) scaleY(1.08); }
+  100% { transform: scale(1); }
 }
 
 /* ==========================================================================
@@ -354,7 +440,7 @@ button.link:disabled {
   resize: vertical;
   background: var(--color-surface);
   color: var(--color-text);
-  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  transition: border-color var(--duration-quick) var(--ease-quiet), box-shadow var(--duration-quick) var(--ease-quiet);
 }
 
 .capture-textarea::placeholder {
@@ -391,7 +477,9 @@ button.link:disabled {
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--color-text-faint);
+  /* Real content, not decoration — uses --color-text-muted (AA compliant),
+     not --color-text-faint (placeholder-only, see :root comment). */
+  color: var(--color-text-muted);
   margin: 0 0 var(--space-2);
 }
 
@@ -515,7 +603,7 @@ button.link:disabled {
   color: var(--color-text);
   padding: 0.25rem 0.3rem;
   border-radius: var(--radius-sm);
-  transition: border-color 0.12s ease;
+  transition: border-color var(--duration-quick) var(--ease-quiet);
 }
 
 .field-inline:hover {
@@ -575,6 +663,7 @@ button.link:disabled {
    status badge; this is the ordinary case, not a signature moment. */
 .task-row-done {
   opacity: 0.65;
+  transition: opacity var(--duration-settle) var(--ease-quiet);
 }
 
 .field-title-done {
@@ -594,12 +683,15 @@ button.link:disabled {
 }
 
 .task-delete {
-  color: var(--color-text-faint);
+  /* An actionable control, not decoration — needs real contrast
+     (--color-text-muted), same reasoning as .capture-source-label above. */
+  color: var(--color-text-muted);
   font-weight: 400;
+  transition: color var(--duration-quick) var(--ease-quiet);
 }
 
 .task-delete:hover:not(:disabled) {
-  color: var(--color-text-muted);
+  color: var(--color-text);
 }
 
 /* ==========================================================================
@@ -670,6 +762,69 @@ button.link:disabled {
    Responsive — collapse the editable task grid on narrow viewports rather
    than shrinking each field illegibly.
    ========================================================================== */
+
+/* ==========================================================================
+   Toast / Undo (item 3 of the polish slice) — replaces a confirmation
+   dialog on delete (which would reverse AC-3.5.1) with instant deletion
+   plus a brief, dismissible way to reverse it. role="status" +
+   aria-live="polite" (set in ToastProvider.tsx) so screen-reader users
+   get the same recovery path as sighted users, per NFR-5.
+   ========================================================================== */
+
+.toast-region {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-6);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-2);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--color-text);
+  color: var(--color-surface);
+  padding: 0.7rem 1.1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  box-shadow: 0 6px 20px rgba(40, 36, 31, 0.22);
+  animation: toast-in var(--duration-settle) var(--ease-quiet);
+}
+
+.toast.is-leaving {
+  animation: toast-out var(--duration-settle) var(--ease-quiet) forwards;
+}
+
+.toast button.link {
+  color: var(--color-surface);
+  text-decoration: underline;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
 
 @media (max-width: 640px) {
   .app-header {
