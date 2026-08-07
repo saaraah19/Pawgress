@@ -96,7 +96,7 @@ export function TaskList() {
       <ManualTaskForm />
 
       {visibleTasks.length === 0 ? (
-        <p className="muted">
+        <p className="empty-state">
           {view === "today" ? "Nothing on your plate right now." : "No tasks yet."}
         </p>
       ) : (

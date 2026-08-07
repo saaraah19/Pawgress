@@ -28,3 +28,14 @@ class LoginRequest(BaseModel):
 class AuthResponse(BaseModel):
     user_id: uuid.UUID
     access_token: str
+
+
+class ProfileResponse(BaseModel):
+    """FR-1.3 — the neutral default ('Friend') is applied here, at the API
+    layer, never stored on the User row. A NULL display_name in the
+    database *is* "no display name set yet" (identity/models.py); this is
+    where that NULL becomes something presentable, so the frontend never
+    has to know the difference between "no name" and "named Friend."""
+    user_id: uuid.UUID
+    display_name: str
+    email: str

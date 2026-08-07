@@ -6,6 +6,8 @@ Deliberately thin — this file's only job is app setup; all real logic lives
 in the modules.
 """
 
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,6 +17,14 @@ from productivity.routes import router as productivity_router
 from companion.routes import router as companion_router
 
 settings.validate()  # fail loudly at startup if required env vars are missing
+
+# System Architecture §19: three log categories kept structurally separate
+# (operational, product metrics, AI cost/performance). This call only
+# ensures the "pawgress.ai_cost" logger (ai_extraction/cost_logger.py) has
+# somewhere to go in local dev — stdout, one JSON object per line, easy to
+# grep or pipe into a real log processor later without changing the
+# emitting code at all.
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 app = FastAPI(title="Pawgress API", version="0.2.0-slice2")
 

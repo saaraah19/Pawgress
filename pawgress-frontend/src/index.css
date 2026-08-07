@@ -1,32 +1,79 @@
 /*
-  Brand Identity §7: warm neutrals as the base, "a calm room, not a game
-  lobby." Red is explicitly excluded as a status color anywhere in the
-  product — that's treated here as a hard rule with no error-message
-  carve-out, since Blueprint §14 bans loss-framed visual elements generally,
-  not just overdue/streak contexts. Errors use the same muted, warm palette
-  as everything else, distinguished by a border and a plain label, not color
-  alarm.
+  Pawgress design system.
 
-  This is intentionally plain. Brand §7 itself says the full visual system is
-  a design-phase deliverable, not a strategy-phase one — this file respects
-  the hard constraints without pretending to finalize visuals that aren't
-  settled yet.
+  Brand Identity §7: warm neutrals as the base, "a calm room, not a game
+  lobby." Color communicates state sparingly, never urgency. Red is
+  structurally absent as a status color — not unused, not implemented at
+  all — per Blueprint §14's ban on loss-framed visual elements.
+
+  SIGNATURE IDEA (approved): the two accent colors map 1:1 to Brand §4's
+  hard rule that the Assistant and the Cat never share a voice. Teal is
+  used exclusively for correctness-dependent UI (the Assistant: capture,
+  structure, corrections, primary actions). Brass is used exclusively for
+  presence-only, peripheral content (the Cat: the companion indicator,
+  nothing else). They are never combined on the same element — that
+  discipline is enforced here, in the tokens themselves, not left to
+  per-component judgment calls later.
+
+  Two typefaces carry distinct jobs, plus a third for anything that reads
+  as data rather than prose (estimates, timestamps, category tags) — a
+  register shift the eye can feel even before reading the content.
 */
 
-:root {
-  --color-bg: #faf7f2;
-  --color-surface: #ffffff;
-  --color-text: #2b2622;
-  --color-text-muted: #6b6259;
-  --color-border: #e4ddd2;
-  --color-accent: #6b5b4f;
-  --color-accent-hover: #574a40;
-  --color-notice-border: #b8a68f;
-  --color-notice-bg: #f4ede1;
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=Karla:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
-  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+:root {
+  /* --- Color --- */
+  --color-bg: #ede7dc;
+  --color-surface: #faf7f1;
+  --color-surface-raised: #ffffff;
+  --color-border: #dbd2c1;
+  --color-border-strong: #c9bda6;
+  --color-text: #28241f;
+  --color-text-muted: #867c6c;
+  --color-text-faint: #a89e8d;
+
+  /* Assistant voice — correctness-dependent UI only (structure, buttons,
+     focus rings, corrections). Never used for the cat. */
+  --color-assistant: #2f4f4c;
+  --color-assistant-hover: #24403d;
+  --color-assistant-tint: #e2e9e7;
+
+  /* Cat voice — presence-only, peripheral. Never used structurally, never
+     on a button, never on anything the user must trust as correct. */
+  --color-cat: #b8935a;
+  --color-cat-tint: #f2e8d8;
+
+  /* No danger/red token exists. This is deliberate, not an omission —
+     Brand Identity §7 bans red as a status color outright. Notices use
+     the same warm palette as everything else, distinguished by a border
+     and a plain label, never by alarm color. */
+
+  /* --- Type --- */
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "Karla", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* --- Spacing scale --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* --- Radius scale --- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+
+  font-family: var(--font-body);
   color: var(--color-text);
   background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
 }
 
 * {
@@ -42,11 +89,40 @@ body {
   min-height: 100vh;
 }
 
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+a {
+  color: var(--color-assistant);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-assistant);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ==========================================================================
+   Shared primitives — used across auth, goals, and other ordinary screens.
+   UX Philosophy §6: ordinary interactions are simple, fast, unobtrusive.
+   ========================================================================== */
+
 .page {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4rem 1.5rem;
+  padding: var(--space-8) var(--space-4);
 }
 
 .card {
@@ -54,93 +130,132 @@ body {
   max-width: 380px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 2rem;
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
 }
 
 .card h1 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0 0 1.5rem 0;
+  font-size: 1.4rem;
+  margin: 0 0 var(--space-5) 0;
 }
 
 .field {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .field label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--color-text-muted);
-  margin-bottom: 0.35rem;
+  margin-bottom: var(--space-1);
+}
+
+.field p {
+  margin: 0;
+  font-size: 1rem;
 }
 
 .field input {
   width: 100%;
-  padding: 0.6rem 0.7rem;
+  padding: 0.7rem 0.8rem;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
   font-size: 1rem;
-  background: var(--color-bg);
+  background: var(--color-surface-raised);
   color: var(--color-text);
+  transition: border-color 0.12s ease;
 }
 
 .field input:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--color-assistant);
+  box-shadow: 0 0 0 3px var(--color-assistant-tint);
+}
+
+button {
+  font-family: inherit;
 }
 
 button.primary {
   width: 100%;
-  padding: 0.65rem 1rem;
+  padding: 0.75rem 1.2rem;
   border: none;
-  border-radius: 6px;
-  background: var(--color-accent);
-  color: #fff;
+  border-radius: var(--radius-sm);
+  background: var(--color-assistant);
+  color: var(--color-surface);
   font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.12s ease;
 }
 
 button.primary:hover:not(:disabled) {
-  background: var(--color-accent-hover);
+  background: var(--color-assistant-hover);
 }
 
 button.primary:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: default;
 }
 
 button.link {
   background: none;
   border: none;
-  color: var(--color-accent);
+  color: var(--color-assistant);
   cursor: pointer;
   font-size: 0.9rem;
+  font-weight: 600;
   padding: 0;
 }
 
+button.link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+button.link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .notice {
-  border: 1px solid var(--color-notice-border);
-  background: var(--color-notice-bg);
-  border-radius: 6px;
-  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.85rem;
   font-size: 0.9rem;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
   color: var(--color-text);
 }
 
 .muted {
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
+}
+
+/* Empty states carry a small amount of the display face, per the token
+   plan — a moment of character on screens that would otherwise say
+   nothing at all. Still quiet: no color, no size jump, just the typeface
+   shift asking to be read a beat slower. */
+.empty-state {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--color-text-muted);
+  padding: var(--space-3) 0;
 }
 
 .switch-row {
-  margin-top: 1.25rem;
+  margin-top: var(--space-5);
   text-align: center;
+  font-size: 0.9rem;
 }
 
-/* --- Authenticated shell (Ordinary interaction — UX Philosophy §6: fast,
-   unobtrusive, no ceremony) --- */
+/* ==========================================================================
+   Authenticated shell — deliberately low design investment, per UX
+   Philosophy §6 ("navigating between views — instant, no transition worth
+   designing around") and Brand §8 (account/profile surfaces are
+   utilitarian, no cat presence at all outside this one header slot).
+   ========================================================================== */
 
 .app-shell {
   min-height: 100vh;
@@ -150,76 +265,148 @@ button.link {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.5rem;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.app-header-brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
 }
 
 .app-header-title {
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
   color: var(--color-text);
 }
 
-.app-main {
-  padding: 2rem 1.5rem;
+.app-nav {
+  display: flex;
+  gap: var(--space-5);
 }
 
-/* --- First Capture (Signature interaction — highest design investment,
-   UX Philosophy §5.1). Deliberately plain: no gradients, no motion, no
-   celebratory color. --- */
+.app-nav a.link {
+  font-size: 0.92rem;
+}
+
+.app-main {
+  padding: var(--space-6) var(--space-4) var(--space-8);
+}
+
+/* --- Cat Companion ambient indicator (FR-6.1). Brass only — the one
+   place that color is allowed to appear, and never on anything
+   structural. Small, quiet, easy to miss if you're not looking, per
+   Brand §10's baseline-presence principle. --- */
+
+.companion-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  color: var(--color-cat);
+}
+
+.companion-glyph {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+/* ==========================================================================
+   The First Capture (Signature interaction #1 — UX Philosophy §5.1).
+   Highest design investment of the five. One accent (teal) on the whole
+   screen. No celebratory copy, no motion, no gimmicks (FR-2.5). The
+   transformation from raw input to structure is made legible, not just
+   dumped (FR-2.4).
+   ========================================================================== */
 
 .capture-page {
-  padding-top: 1rem;
+  width: 100%;
+  padding-top: var(--space-4);
 }
 
 .capture-card {
   width: 100%;
-  max-width: 560px;
+  max-width: 620px;
   margin: 0 auto;
 }
 
 .capture-form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-4);
 }
 
 .capture-textarea {
   width: 100%;
-  padding: 0.75rem;
+  min-height: 9rem;
+  padding: var(--space-5);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 1rem;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-body);
+  font-size: 1.08rem;
+  line-height: 1.5;
   resize: vertical;
   background: var(--color-surface);
   color: var(--color-text);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.capture-textarea::placeholder {
+  color: var(--color-text-faint);
 }
 
 .capture-textarea:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--color-assistant);
+  box-shadow: 0 0 0 4px var(--color-assistant-tint);
 }
 
 .capture-form button.primary {
   align-self: flex-start;
-  padding: 0.6rem 1.5rem;
+  padding: 0.75rem 1.75rem;
 }
 
 .capture-result {
-  margin-top: 1.75rem;
+  margin-top: var(--space-6);
 }
 
-.capture-source {
+/* The hairline separator + label make the raw-input-to-structure
+   transform visually legible (FR-2.4) without narrating it — this is
+   the "act of understanding is seen, not just its result" requirement
+   from UX Philosophy §5.1, executed as quietly as possible. */
+.capture-divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 0 0 var(--space-4);
+}
+
+.capture-source-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  margin: 0 0 var(--space-2);
+}
+
+.capture-source-text {
   font-style: italic;
-  margin-bottom: 0.75rem;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-5);
 }
 
 .raw-text-preserved {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
   white-space: pre-wrap;
   color: var(--color-text);
 }
@@ -230,29 +417,30 @@ button.link {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-3);
 }
 
 .task-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
+  gap: var(--space-4);
+  padding: var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .task-title {
-  font-size: 0.95rem;
+  font-size: 0.97rem;
 }
 
 .task-meta {
   display: flex;
-  gap: 0.6rem;
+  gap: var(--space-2);
   flex-shrink: 0;
-  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
   color: var(--color-text-muted);
   white-space: nowrap;
 }
@@ -260,30 +448,61 @@ button.link {
 .task-category,
 .task-priority,
 .task-estimate {
-  padding: 0.15rem 0.5rem;
+  padding: 0.2rem 0.6rem;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
 }
 
-/* --- Persistent flat task list (FR-3.1, ordinary interaction) + Quiet
-   Correction inline fields (FR-4.1–4.3: in place, no confirmation, no
-   reactive copy on save). --- */
+/* ==========================================================================
+   Persistent flat task list (FR-3.1) + Quiet Correction (Signature
+   interaction #2 — FR-4.1–4.3: in place, no confirmation, no reactive
+   copy on save).
+   ========================================================================== */
 
 .task-list-section {
   width: 100%;
-  max-width: 720px;
-  margin: 2.5rem auto 0;
+  max-width: 760px;
+  margin: var(--space-7) auto 0;
+}
+
+.view-toggle {
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  margin-bottom: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+}
+
+.view-toggle button.link {
+  padding: 0.35rem 0.9rem;
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.view-toggle button.link:hover:not(:disabled) {
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.view-toggle button.link[aria-current="true"] {
+  background: var(--color-assistant);
+  color: var(--color-surface);
 }
 
 .task-list-editable {
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .task-row-editable {
   display: grid;
-  grid-template-columns: 22px minmax(140px, 1fr) 110px 96px 90px;
+  grid-template-columns: 22px minmax(140px, 1fr) 120px 100px 96px;
   align-items: center;
-  gap: 0.5rem 0.75rem;
+  gap: var(--space-2) var(--space-3);
 }
 
 .field-inline {
@@ -294,21 +513,30 @@ button.link {
   font-family: inherit;
   font-size: 0.9rem;
   color: var(--color-text);
-  padding: 0.2rem 0.3rem;
-  border-radius: 4px;
+  padding: 0.25rem 0.3rem;
+  border-radius: var(--radius-sm);
+  transition: border-color 0.12s ease;
 }
 
 .field-inline:hover {
-  border-bottom-color: var(--color-accent);
+  border-bottom-color: var(--color-assistant);
 }
 
 .field-inline:focus {
   outline: none;
-  border: 1px solid var(--color-accent);
+  border: 1px solid var(--color-assistant);
+  border-radius: var(--radius-sm);
 }
 
 .field-inline:disabled {
   opacity: 0.6;
+}
+
+.field-category,
+.field-priority,
+.field-estimate {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
 }
 
 .field-priority {
@@ -319,81 +547,110 @@ button.link {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .field-estimate {
-  width: 3rem;
+  width: 3.2rem;
   text-align: right;
   flex: 0 0 auto;
 }
 
 .field-estimate-unit {
-  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
   color: var(--color-text-muted);
   flex: 0 0 auto;
 }
 
 .task-status-checkbox {
-  width: 1.05rem;
-  height: 1.05rem;
-  accent-color: var(--color-accent);
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--color-assistant);
   cursor: pointer;
 }
 
 /* Completing a task is quiet, not celebrated (UX Philosophy §5.3) — a
-   slight fade on the row and muted title text is the entire acknowledgment.
-   No strikethrough-as-crossed-off, no color change that reads as a status
-   badge; this is the ordinary case, not a signature moment. */
+   slight fade is the entire acknowledgment. No strikethrough, no color
+   status badge; this is the ordinary case, not a signature moment. */
 .task-row-done {
-  opacity: 0.7;
+  opacity: 0.65;
 }
 
 .field-title-done {
   color: var(--color-text-muted);
 }
 
-/* --- Manual task creation (FR-3.4) — an ordinary interaction, collapsed by
-   default to a single title field. Reuses .capture-form/.field-inline/
-   .primary/.link rather than introducing a second visual language for what
-   is functionally the same "type something, submit it" shape as capture. --- */
+.field-goal-group {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.goal-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.task-delete {
+  color: var(--color-text-faint);
+  font-weight: 400;
+}
+
+.task-delete:hover:not(:disabled) {
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   Manual task creation (FR-3.4) — ordinary interaction, reuses the
+   capture/field-inline visual language rather than a second one.
+   ========================================================================== */
 
 .add-task-toggle {
   align-self: flex-start;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-4);
 }
 
 .manual-task-form {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 1rem;
-  padding: 0.85rem;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
 }
 
 .manual-task-form .capture-form {
   flex-direction: row;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-3);
 }
 
 .manual-task-form .capture-form .field-inline {
   flex: 1;
 }
 
+.manual-task-form button.primary {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0.55rem 1.2rem;
+}
+
 .manual-task-details-toggle {
   align-self: flex-start;
   font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
 }
 
 .manual-task-details {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding-top: 0.4rem;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--color-border);
 }
 
@@ -401,25 +658,44 @@ button.link {
   flex: 1;
 }
 
-/* --- Cat Companion ambient indicator (FR-6.1) — small, quiet, peripheral.
-   Grouped with the app title rather than given its own header slot, so it
-   reads as "part of the brand" rather than a fourth competing nav item. --- */
+/* ==========================================================================
+   Goals page — flat list, ordinary interaction.
+   ========================================================================== */
 
-.app-header-brand {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
+.goals-card {
+  max-width: 480px;
 }
 
-.companion-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
+/* ==========================================================================
+   Responsive — collapse the editable task grid on narrow viewports rather
+   than shrinking each field illegibly.
+   ========================================================================== */
 
-.companion-glyph {
-  font-size: 0.85rem;
-  line-height: 1;
+@media (max-width: 640px) {
+  .app-header {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .app-nav {
+    gap: var(--space-3);
+  }
+
+  .task-row-editable {
+    grid-template-columns: 22px 1fr;
+    row-gap: var(--space-1);
+  }
+
+  .task-row-editable .field-category,
+  .task-row-editable .field-priority,
+  .task-row-editable .field-estimate-group,
+  .task-row-editable .field-goal-group,
+  .task-row-editable .task-delete {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .field-estimate-group,
+  .field-goal-group {
+    justify-content: flex-start;
+  }
 }

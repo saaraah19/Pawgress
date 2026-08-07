@@ -46,7 +46,7 @@ export function GoalsPage() {
 
   return (
     <div className="page">
-      <div className="card">
+      <div className="card goals-card">
         <h1>Goals</h1>
 
         <form onSubmit={handleSubmit} className="capture-form">
@@ -74,7 +74,7 @@ export function GoalsPage() {
         )}
 
         {goalsQuery.data && goalsQuery.data.length === 0 && (
-          <p className="muted">No goals yet.</p>
+          <p className="empty-state">No goals yet.</p>
         )}
 
         {goalsQuery.data && goalsQuery.data.length > 0 && (

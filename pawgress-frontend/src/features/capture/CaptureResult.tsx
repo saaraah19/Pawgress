@@ -46,14 +46,17 @@ export function CaptureResult({ result, onRetry, retrying }: CaptureResultProps)
   if (result.tasks.length === 0) {
     return (
       <div className="capture-result">
-        <p className="muted">Nothing here needed turning into a task.</p>
+        <hr className="capture-divider" />
+        <p className="empty-state">Nothing here needed turning into a task.</p>
       </div>
     );
   }
 
   return (
     <div className="capture-result">
-      <p className="muted capture-source">"{result.capture.rawText}"</p>
+      <hr className="capture-divider" />
+      <p className="capture-source-label">from what you just said</p>
+      <p className="capture-source-text">"{result.capture.rawText}"</p>
       <ul className="task-list">
         {result.tasks.map((task) => (
           <li key={task.id} className="task-row">

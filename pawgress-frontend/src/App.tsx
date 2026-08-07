@@ -4,6 +4,7 @@ import { RegisterPage } from "./features/auth/RegisterPage";
 import { RequireAuth } from "./features/auth/RequireAuth";
 import { CapturePage } from "./features/capture/CapturePage";
 import { GoalsPage } from "./features/goals/GoalsPage";
+import { AccountPage } from "./features/account/AccountPage";
 import { AppShell } from "./shared/ui/AppShell";
 
 export function App() {
@@ -27,6 +28,16 @@ export function App() {
           <RequireAuth>
             <AppShell>
               <GoalsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/account"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <AccountPage />
             </AppShell>
           </RequireAuth>
         }

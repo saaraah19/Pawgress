@@ -20,6 +20,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link className="link" to="/goals">
             Goals
           </Link>
+          <Link className="link" to="/account">
+            Account
+          </Link>
         </nav>
         <button className="link" onClick={logout}>
           Log out

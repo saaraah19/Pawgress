@@ -15,6 +15,7 @@ per-request timeout + a small bounded retry, explicitly NOT a full circuit
 breaker (no measured traffic yet to justify that infrastructure).
 """
 
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -23,6 +24,7 @@ from openai import OpenAI
 from shared.config import settings
 from ai_extraction.prompt import SYSTEM_PROMPT
 from ai_extraction.schema import validate_extraction_response, SchemaValidationError, ExtractionResponse
+from ai_extraction.cost_logger import log_extraction_call
 
 
 @dataclass
@@ -59,6 +61,7 @@ class GroqModelProvider(ModelProvider):
         # yet (System Architecture §1's "don't build ahead of measured need").
         last_error = None
         for attempt in range(2):
+            start = time.monotonic()
             try:
                 response = self._client.chat.completions.create(
                     model=settings.extraction_model,
@@ -69,9 +72,22 @@ class GroqModelProvider(ModelProvider):
                     ],
                     timeout=30.0,
                 )
+                latency_ms = (time.monotonic() - start) * 1000
+                usage = getattr(response, "usage", None)
+                input_tokens = getattr(usage, "prompt_tokens", None) if usage else None
+                output_tokens = getattr(usage, "completion_tokens", None) if usage else None
                 raw_text = response.choices[0].message.content
+
                 try:
                     validated = validate_extraction_response(raw_text)
+                    log_extraction_call(
+                        model=settings.extraction_model,
+                        outcome="success",
+                        latency_ms=latency_ms,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        attempt=attempt,
+                    )
                     return ExtractionAttemptResult(outcome="success", data=validated, raw_response=raw_text)
                 except SchemaValidationError as e:
                     # Schema-invalid is NOT retried automatically here — a
@@ -80,10 +96,31 @@ class GroqModelProvider(ModelProvider):
                     # silently risks masking a real prompt/model problem.
                     # It's surfaced as a clean failure instead (System
                     # Architecture §20: partial trust is worse than clean failure).
+                    log_extraction_call(
+                        model=settings.extraction_model,
+                        outcome="schema_invalid",
+                        latency_ms=latency_ms,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        attempt=attempt,
+                    )
                     return ExtractionAttemptResult(
                         outcome="schema_invalid", raw_response=raw_text, error=e.reason
                     )
             except Exception as e:
+                latency_ms = (time.monotonic() - start) * 1000
+                # Provider/network failure — no response, so no token usage
+                # to report. Latency and outcome are still real signal
+                # (System Architecture §19: tracked per-request regardless
+                # of outcome, not just on success).
+                log_extraction_call(
+                    model=settings.extraction_model,
+                    outcome="provider_error",
+                    latency_ms=latency_ms,
+                    input_tokens=None,
+                    output_tokens=None,
+                    attempt=attempt,
+                )
                 last_error = str(e)
                 continue  # transient network/provider error — worth one retry
 

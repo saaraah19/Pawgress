@@ -69,3 +69,11 @@ export interface AuthResponse {
   user_id: string;
   access_token: string;
 }
+
+export interface Profile {
+  user_id: string;
+  display_name: string; // FR-1.3 — always present; the neutral default
+  // ("Friend") is already applied server-side, so the client never needs
+  // to know whether this came from a real name or the placeholder.
+  email: string;
+}
