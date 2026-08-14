@@ -302,6 +302,54 @@ button.link:disabled {
   padding: var(--space-3) 0;
 }
 
+/* --- Companion-paired empty states (Polish Sprint, roadmap item 1) ---
+   Used only where the blank state is a genuine presence moment, not a
+   correctness report — see shared/ui/EmptyState.tsx's doc comment. The
+   glyph here is deliberately larger than the header's ambient one
+   (2rem vs. 0.85rem) since it's the sole content on screen rather than a
+   peripheral detail — that's a considered exception to "the cat stays
+   small," not an oversight: BR-3 governs the First Capture *result*
+   screen specifically, and Brand §9's "never larger/louder/more central"
+   ban is about competing with the user's own content, which doesn't
+   exist yet when the state is genuinely empty. */
+.empty-state-companion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-7) 0;
+  text-align: center;
+}
+
+.empty-state-glyph {
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--color-cat);
+  opacity: 0.6;
+  display: inline-block;
+}
+
+/* "resting" (napping) gets zero motion, on purpose — stillness is the
+   entire point of this mood. Only "alert" (goals empty — "looking
+   around") gets a subtle, slow, infrequent motion, so the two empty
+   states read as genuinely different moods rather than the same glyph
+   reused with different copy underneath it. */
+.empty-state-glyph-alert {
+  animation: empty-state-look calc(var(--duration-ambient) * 1.6) var(--ease-quiet) infinite;
+}
+
+@keyframes empty-state-look {
+  0%, 88%, 100% {
+    transform: rotate(0deg);
+  }
+  92% {
+    transform: rotate(-10deg);
+  }
+  96% {
+    transform: rotate(6deg);
+  }
+}
+
 .switch-row {
   margin-top: var(--space-5);
   text-align: center;

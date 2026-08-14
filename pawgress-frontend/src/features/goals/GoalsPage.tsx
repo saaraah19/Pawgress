@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import { createGoal, listGoals, deleteGoal } from "../../api/client";
 import { useToast } from "../../shared/ui/ToastProvider";
+import { EmptyState } from "../../shared/ui/EmptyState";
 import { GOALS_QUERY_KEY, TASKS_QUERY_KEY } from "../../shared/queryKeys";
 import type { Goal } from "../../shared/types";
 
@@ -135,7 +136,9 @@ export function GoalsPage() {
           </div>
         )}
 
-        {goalsQuery.data && visibleGoals.length === 0 && <p className="empty-state">No goals yet.</p>}
+        {goalsQuery.data && visibleGoals.length === 0 && (
+          <EmptyState mood="alert" message="Nothing to chase yet." />
+        )}
 
         {visibleGoals.length > 0 && (
           <ul className="task-list">

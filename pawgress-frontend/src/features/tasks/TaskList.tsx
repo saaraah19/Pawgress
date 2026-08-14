@@ -5,6 +5,7 @@ import { listTasks, updateTask, deleteTask, listGoals } from "../../api/client";
 import { TaskRow } from "./TaskRow";
 import { ManualTaskForm } from "./ManualTaskForm";
 import { useToast } from "../../shared/ui/ToastProvider";
+import { EmptyState } from "../../shared/ui/EmptyState";
 import { TASKS_QUERY_KEY, GOALS_QUERY_KEY } from "../../shared/queryKeys";
 import type { Task, TaskUpdateRequest } from "../../shared/types";
 
@@ -165,9 +166,14 @@ export function TaskList() {
       <ManualTaskForm />
 
       {visibleTasks.length === 0 ? (
-        <p className="empty-state">
-          {view === "today" ? "Nothing on your plate right now." : "No tasks yet."}
-        </p>
+        <EmptyState
+          mood="resting"
+          message={
+            view === "today"
+              ? "Nothing's waiting. The cat's dozing too."
+              : "No tasks yet. The cat's dozing too."
+          }
+        />
       ) : (
         <ul className="task-list task-list-editable">
           {visibleTasks.map((task) => (
