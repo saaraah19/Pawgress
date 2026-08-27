@@ -4,6 +4,9 @@ import { RegisterPage } from "./features/auth/RegisterPage";
 import { RequireAuth } from "./features/auth/RequireAuth";
 import { CapturePage } from "./features/capture/CapturePage";
 import { GoalsPage } from "./features/goals/GoalsPage";
+import { JournalPage } from "./features/journal/JournalPage";
+import { HabitsPage } from "./features/habits/HabitsPage";
+import { CalendarPage } from "./features/calendar/CalendarPage";
 import { AccountPage } from "./features/account/AccountPage";
 import { AppShell } from "./shared/ui/AppShell";
 
@@ -28,6 +31,36 @@ export function App() {
           <RequireAuth>
             <AppShell>
               <GoalsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/journal"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <JournalPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/habits"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <HabitsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/calendar"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <CalendarPage />
             </AppShell>
           </RequireAuth>
         }

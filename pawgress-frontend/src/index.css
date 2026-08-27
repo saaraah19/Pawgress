@@ -105,6 +105,9 @@
   --duration-quick: 120ms;   /* hovers, focus rings, small state changes */
   --duration-settle: 240ms;  /* fades, row transitions, toast entry */
   --duration-ambient: 4000ms; /* slow, continuous companion motion */
+  /* Keep in sync with COMPANION_TIMING.crossfadeMs in
+     features/companion/companionConfig.ts — provisional, not locked. */
+  --duration-companion-crossfade: 700ms;
   --ease-quiet: cubic-bezier(0.33, 0, 0.2, 1);
 
   font-family: var(--font-body);
@@ -404,51 +407,67 @@ button.link:disabled {
   padding: var(--space-6) var(--space-4) var(--space-8);
 }
 
-/* --- Cat Companion ambient indicator (FR-6.1). Brass only — the one
-   place that color is allowed to appear, and never on anything
-   structural. Small, quiet, easy to miss if you're not looking, per
-   Brand §10's baseline-presence principle. --- */
+/* --- Cat Companion character (FR-6.1). Small, quiet, easy to miss if
+   you're not looking, per Brand §10's baseline-presence principle — real
+   production art (docs/companion-character-spec.md) replaces the placeholder
+   paw glyph here, but the header stays the same restrained scale. The cat
+   is presence, not progression; existing real art is not a license to make
+   it bigger or more central. ---
 
-.companion-indicator {
+   v1 asset constraint (spec §6): 7 flattened, whole-image transparent
+   PNGs, no separated layers. That has two direct CSS consequences:
+     1. Expression changes crossfade via two stacked <img> layers (a single
+        background-image can't crossfade on its own) — see
+        .companion-character-layer / .companion-character-layer-incoming.
+     2. Ambient motion (Layer C) is limited to whole-image transforms
+        (stretch, wobble). No blink/gaze/ear/tail sub-part animation —
+        that needs layers this format doesn't have. */
+
+.companion-character {
+  position: relative;
   display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-family: var(--font-display);
-  font-size: 0.88rem;
-  color: var(--color-cat);
+  flex-shrink: 0;
+  vertical-align: middle;
 }
 
-.companion-glyph {
-  font-size: 0.85rem;
-  line-height: 1;
-  display: inline-block;
-  transform-origin: 50% 80%;
-  /* Idle ambient presence (Brand §10 baseline, FR-6.1) — continuous,
-     slow, never draws the eye deliberately. Fully neutralized under
-     prefers-reduced-motion by the global rule below, since it uses the
-     shared --duration-ambient token rather than a hardcoded value. */
-  animation: companion-breathe var(--duration-ambient) var(--ease-quiet) infinite;
+.companion-character-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
 }
 
-/* An occasional stretch, triggered rarely and briefly from JS
-   (CompanionIndicator.tsx) — not a persisted state, not a new
-   CatMoodState value (Domain Model §7 explicitly keeps that enum a
-   small, closed, presentation-only set — this is purely a client-side
-   animation variant layered on whichever mood is already showing). */
-.companion-glyph.is-stretching {
-  animation: companion-stretch 900ms var(--ease-quiet);
+.companion-character-layer-incoming {
+  animation: companion-crossfade-in var(--duration-companion-crossfade) var(--ease-quiet) forwards;
 }
 
-@keyframes companion-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+@keyframes companion-crossfade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-@keyframes companion-stretch {
+.companion-character-ambient-stretch {
+  animation: companion-character-stretch 900ms var(--ease-quiet);
+}
+
+.companion-character-ambient-wobble {
+  animation: companion-character-wobble 900ms var(--ease-quiet);
+}
+
+@keyframes companion-character-stretch {
   0% { transform: scale(1); }
-  35% { transform: scaleX(1.28) scaleY(0.82); }
-  65% { transform: scaleX(0.92) scaleY(1.08); }
+  35% { transform: scaleX(1.16) scaleY(0.9); }
+  65% { transform: scaleX(0.95) scaleY(1.05); }
   100% { transform: scale(1); }
+}
+
+@keyframes companion-character-wobble {
+  0%, 100% { transform: rotate(0deg); }
+  30% { transform: rotate(-4deg); }
+  60% { transform: rotate(3deg); }
+  100% { transform: rotate(0deg); }
 }
 
 /* ==========================================================================
@@ -807,9 +826,294 @@ button.link:disabled {
 }
 
 /* ==========================================================================
-   Responsive — collapse the editable task grid on narrow viewports rather
-   than shrinking each field illegibly.
+   V2 Goal Hierarchy (Blueprint §13) — reuses existing pill/field-inline
+   language rather than a new visual system. Untiered goals fall through to
+   the existing plain .task-list styling above; only tiered goals use these.
    ========================================================================== */
+
+.goals-section-heading {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  margin: var(--space-5) 0 var(--space-2);
+}
+
+.goal-tree,
+.goal-tree-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.goal-tree-children {
+  margin-top: var(--space-2);
+}
+
+.goal-node-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.goal-tier-badge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised);
+}
+
+.goal-node-row .task-title {
+  flex: 1;
+}
+
+.goal-node-error {
+  margin: var(--space-2) 0 0;
+}
+
+/* ==========================================================================
+   V2 Journal (Blueprint §13) — reuses the capture-form/capture-textarea
+   language from the AI Inbox for visual consistency (both are "write
+   freely" surfaces), even though nothing typed here goes through
+   extraction. Deliberately no cat presence, no streak/frequency copy
+   anywhere on this page.
+   ========================================================================== */
+
+.journal-page {
+  align-items: stretch;
+}
+
+.journal-entries-section {
+  width: 100%;
+  max-width: 620px;
+  margin: var(--space-7) auto 0;
+}
+
+.journal-entry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.journal-entry {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.journal-entry-date {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.journal-entry-text {
+  margin: 0 0 var(--space-3);
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.journal-entry-actions {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.journal-entry-editing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.journal-entry-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.journal-entry-edit-actions button.primary {
+  width: auto;
+  padding: 0.5rem 1.1rem;
+}
+
+/* ==========================================================================
+   V2 Habits (Blueprint §13, §16). No streak visuals of any kind — the
+   accumulating-total text is plain body copy, not a badge, not colored,
+   not sized to draw the eye the way a "streak" number typically would.
+   The toggle button is the one piece of new visual language here: a
+   plain circular outline that fills with the assistant's teal ONLY on
+   direct tap, never on its own — there's no ambient color signaling
+   "you haven't done this yet" (that would be exactly the kind of
+   loss-framed visual element Blueprint §14 bans).
+   ========================================================================== */
+
+.habits-card {
+  max-width: 560px;
+}
+
+.habit-form {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.habit-form-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.habit-form-row .field-priority {
+  flex: 1;
+}
+
+.habit-form-row button.primary {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0.55rem 1.2rem;
+}
+
+.habit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.habit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.habit-toggle {
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-surface);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--duration-quick) var(--ease-quiet), border-color var(--duration-quick) var(--ease-quiet);
+}
+
+.habit-toggle.is-done {
+  background: var(--color-assistant);
+  border-color: var(--color-assistant);
+}
+
+.habit-toggle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.habit-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.habit-meta {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   V2 Calendar (Blueprint §13), read-only v1. Deliberately the calmest
+   page in the app — no productivity framing, no color-coding by
+   urgency/type, no dashboard widgets. Just a plain agenda, grouped by
+   day, in the same visual register as everything else.
+   ========================================================================== */
+
+.calendar-card {
+  max-width: 620px;
+}
+
+.calendar-connection-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.calendar-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.calendar-day-heading {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.calendar-event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.calendar-event-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.calendar-event-time {
+  flex-shrink: 0;
+  width: 4.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+}
+
+.calendar-event-title {
+  flex: 1;
+}
+
+.calendar-event-location {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
 
 /* ==========================================================================
    Toast / Undo (item 3 of the polish slice) — replaces a confirmation

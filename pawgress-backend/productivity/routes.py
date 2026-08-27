@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from shared.database import get_db
 from identity.auth import get_current_user
 from identity.models import User
-from productivity.models import Task, Goal, FieldCorrectionRecord, TaskOrigin, Priority
+from productivity.models import Task, Goal, FieldCorrectionRecord, TaskOrigin, Priority, GoalTier
 from productivity.schemas import (
     CaptureRequest,
     CaptureResult,
@@ -25,10 +25,11 @@ from productivity.schemas import (
     TaskUpdateRequest,
     ManualTaskCreateRequest,
     GoalCreateRequest,
+    GoalUpdateRequest,
     GoalResponse,
 )
 from productivity.extraction_service import run_extraction
-from productivity.goal_service import delete_goal_and_unlink_tasks
+from productivity.goal_service import delete_goal_and_unlink_references, validate_parent_link, InvalidGoalParentError
 from ai_extraction.provider import get_model_provider
 
 router = APIRouter(tags=["productivity"])
@@ -209,8 +210,16 @@ def create_goal(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """FR-5.1 — a goal is a flat text label, nothing else."""
-    goal = Goal(id=uuid.uuid4(), user_id=current_user.id, label=payload.label.strip())
+    """FR-5.1, extended for V2 hierarchy. `tier` is optional — omitting it
+    creates a flat MVP-style goal exactly as before. No `parentGoalId`
+    accepted at creation (see GoalCreateRequest's docstring) — assigning a
+    parent is a deliberate follow-up action via PATCH."""
+    goal = Goal(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        label=payload.label.strip(),
+        tier=GoalTier(payload.tier) if payload.tier else None,
+    )
     db.add(goal)
     db.commit()
     db.refresh(goal)
@@ -226,14 +235,109 @@ def list_goals(
     return [GoalResponse.from_model(g) for g in goals]
 
 
+@router.patch("/goals/{goal_id}", response_model=GoalResponse)
+def update_goal(
+    goal_id: uuid.UUID,
+    payload: GoalUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """FR-5.1 (label editing) extended for V2 hierarchy: assigning/changing
+    `tier` and `parentGoalId` both happen here, one field at a time or
+    together, no confirmation step (same one-tap-correction shape as
+    update_task). This is the endpoint that lets a user "earn" hierarchy on
+    an existing flat goal — tier and parent were deliberately not accepted
+    at creation time.
+
+    Parent validation mirrors the existing Task.goalId cross-user check
+    (Domain Model Invariant 3) plus the new tier-ordering rule
+    (goal_service.validate_parent_link) — both enforced here, not left to
+    the database, consistent with ADR 0001's reasoning for keeping domain
+    invariants in application code.
+
+    IMPORTANT: a tier change alone (parentGoalId not touched in this same
+    request) can silently invalidate an EXISTING parent or child link if
+    left unchecked — e.g. a Milestone re-tiered to Annual while still
+    parented under another Annual goal would violate "parent must be
+    strictly broader" without either field looking wrong in isolation.
+    So whenever tier changes, every existing parent/child edge touching
+    this goal is re-validated against the new tier before committing;
+    the whole request is rejected (422, nothing persisted) rather than
+    silently leaving the tree in an inconsistent state or silently
+    unlinking something the user didn't ask to unlink.
+    """
+    goal = db.query(Goal).filter(Goal.id == goal_id, Goal.user_id == current_user.id).first()
+    if not goal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found.")
+
+    changes = payload.model_dump(exclude_unset=True)
+
+    if "label" in changes:
+        goal.label = changes["label"].strip()
+
+    if "tier" in changes:
+        goal.tier = GoalTier(changes["tier"]) if changes["tier"] else None
+
+    if "parentGoalId" in changes:
+        new_parent_id = changes["parentGoalId"]
+        if new_parent_id is None:
+            goal.parent_goal_id = None
+        else:
+            parent = db.query(Goal).filter(Goal.id == new_parent_id, Goal.user_id == current_user.id).first()
+            if not parent:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent goal not found.")
+            try:
+                validate_parent_link(goal, parent)
+            except InvalidGoalParentError as e:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.reason)
+            goal.parent_goal_id = parent.id
+
+    if "tier" in changes:
+        # Re-validate every existing edge this goal participates in against
+        # its (possibly just-changed) tier — see the docstring above for why.
+        # Skips the parent edge if this same request already touched
+        # parentGoalId (already validated, or intentionally cleared, above).
+        if goal.parent_goal_id is not None and "parentGoalId" not in changes:
+            current_parent = db.query(Goal).filter(Goal.id == goal.parent_goal_id).first()
+            try:
+                validate_parent_link(goal, current_parent)
+            except InvalidGoalParentError:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        f"Changing this goal's tier to {goal.tier.value if goal.tier else 'none'} would make "
+                        f"its current parent an invalid tier for it. Unlink or re-tier the parent first."
+                    ),
+                )
+
+        children = db.query(Goal).filter(Goal.parent_goal_id == goal.id).all()
+        for child in children:
+            try:
+                validate_parent_link(child, goal)
+            except InvalidGoalParentError:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        f"Changing this goal's tier to {goal.tier.value if goal.tier else 'none'} would make "
+                        f"it an invalid parent for '{child.label}'. Unlink or re-tier that child first."
+                    ),
+                )
+
+    db.commit()
+    db.refresh(goal)
+    return GoalResponse.from_model(goal)
+
+
 @router.delete("/goals/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_goal(
     goal_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Domain Model §10.5/Invariant 9 — unlink, never cascade. See goal_service.py."""
+    """Domain Model §10.5/Invariant 9 — unlink, never cascade. Extended for
+    hierarchy: child Goals are unlinked exactly like Tasks are. See
+    goal_service.py."""
     goal = db.query(Goal).filter(Goal.id == goal_id, Goal.user_id == current_user.id).first()
     if not goal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found.")
-    delete_goal_and_unlink_tasks(db, goal)
+    delete_goal_and_unlink_references(db, goal)

@@ -6,11 +6,13 @@ import { CaptureForm } from "./CaptureForm";
 import { CaptureResult } from "./CaptureResult";
 import { TaskList } from "../tasks/TaskList";
 import { TASKS_QUERY_KEY } from "../../shared/queryKeys";
+import { useCompanionReaction } from "../companion/CompanionReactionContext";
 import type { CaptureResult as CaptureResultType } from "../../shared/types";
 
 export function CapturePage() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
+  const { reactToCapture } = useCompanionReaction();
   const [result, setResult] = useState<CaptureResultType | null>(null);
   const [formKey, setFormKey] = useState(0);
 
@@ -19,6 +21,11 @@ export function CapturePage() {
     onSuccess: async (data) => {
       setResult(data);
       setFormKey((k) => k + 1);
+      // Layer D — companion-character-spec.md §5.D: capture is one of the
+      // two allowed contextual reaction triggers. Fires regardless of
+      // whether tasks were extracted (a zero-task capture is still a
+      // genuine, successful moment of being heard).
+      reactToCapture();
       await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
 
       // Quiet Correction (UX Philosophy §5.2) is arguably as important as

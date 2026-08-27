@@ -87,6 +87,19 @@ class Settings:
     def frontend_origins(self) -> list[str]:
         return [origin.strip() for origin in self.frontend_origin.split(",") if origin.strip()]
 
+    # --- Calendar (Google, read-only, v1) ---
+    # NOT included in validate()'s required-startup check below — Calendar
+    # is opt-in (Blueprint's general "AI-first does not mean AI-only"
+    # spirit extended here: a feature nobody has connected yet shouldn't
+    # block the whole app from starting the way a missing DATABASE_URL
+    # would). A route that actually needs these fails clearly instead
+    # (see calendar_integration/google_provider.py's CalendarNotConfiguredError).
+    google_client_id: str = os.environ.get("GOOGLE_CLIENT_ID", "")
+    google_client_secret: str = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    google_oauth_redirect_uri: str = os.environ.get(
+        "GOOGLE_OAUTH_REDIRECT_URI", "http://127.0.0.1:8000/calendar/oauth/callback"
+    )
+
     def validate(self) -> None:
         """Fail loudly at startup if required secrets are missing, rather than
         failing confusingly on the first real request."""

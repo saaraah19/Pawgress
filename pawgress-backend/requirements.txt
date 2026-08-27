@@ -7,6 +7,19 @@ python-jose[cryptography]==3.3.0
 openai>=1.57.0,<2.0.0
 python-dotenv==1.0.1
 
+# Migrations (added for the V2 goal hierarchy slice — see docs/PROGRESS.md
+# Slice A). Pure-Python, no compiled component, same reasoning as the
+# other pinned-exact packages above.
+alembic==1.13.2
+
+# Added for the V2 Calendar slice (Google OAuth token exchange + Calendar
+# API v3 calls, calendar_integration/google_provider.py) — a thin REST
+# client, used instead of Google's official google-api-python-client /
+# google-auth-oauthlib stack, which would pull in a meaningfully heavier
+# dependency chain for what is really two plain HTTP calls. Pure Python,
+# no compiled component.
+httpx==0.27.2
+
 # bcrypt itself (not through passlib — see identity/auth.py for why: passlib
 # 1.7.4 has a known crash-at-runtime incompatibility with bcrypt >=4.x).
 # Already confirmed in your install log to have a working cp39-abi3 wheel

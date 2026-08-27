@@ -9,6 +9,11 @@ export type TaskStatus = "NotStarted" | "Done";
 export type TaskOrigin = "AIGenerated" | "ManuallyCreated";
 export type CaptureStatus = "Pending" | "Succeeded" | "Failed";
 export type CatMoodState = "Neutral" | "Attentive" | "Content";
+// V2 goal hierarchy (Blueprint §13). Ordinal position matches the backend's
+// GOAL_TIER_RANK — broader scope first. A Goal's tier is optional; a goal
+// with no tier behaves exactly like the original flat MVP goal.
+export const GOAL_TIERS = ["Annual", "Quarterly", "Project", "Milestone"] as const;
+export type GoalTier = (typeof GOAL_TIERS)[number];
 
 // --- productivity/schemas.py ---
 export interface Task {
@@ -26,7 +31,20 @@ export interface Task {
 export interface Goal {
   id: string;
   label: string;
+  tier: GoalTier | null;
+  parentGoalId: string | null;
   createdAt: string;
+}
+
+export interface GoalCreateRequest {
+  label: string;
+  tier?: GoalTier;
+}
+
+export interface GoalUpdateRequest {
+  label?: string;
+  tier?: GoalTier | null;
+  parentGoalId?: string | null;
 }
 
 export interface CompanionState {
@@ -76,4 +94,69 @@ export interface Profile {
   // ("Friend") is already applied server-side, so the client never needs
   // to know whether this came from a real name or the placeholder.
   email: string;
+}
+
+// --- journal/schemas.py ---
+export interface JournalEntry {
+  id: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JournalEntryCreateRequest {
+  text: string;
+}
+
+export interface JournalEntryUpdateRequest {
+  text: string;
+}
+
+// --- habits/schemas.py ---
+export type HabitFrequency = "Daily" | "WeeklyCount";
+
+export interface Habit {
+  id: string;
+  label: string;
+  frequency: HabitFrequency;
+  weeklyTarget: number | null;
+  goalId: string | null;
+  // Deliberately a plain accumulating total, not a streak — see
+  // habits/models.py's docstring. Never resets, never "breaks."
+  totalCompletions: number;
+  completedToday: boolean;
+  createdAt: string;
+}
+
+export interface HabitCreateRequest {
+  label: string;
+  frequency: HabitFrequency;
+  weeklyTarget?: number;
+  goalId?: string;
+}
+
+export interface HabitUpdateRequest {
+  label?: string;
+  frequency?: HabitFrequency;
+  weeklyTarget?: number | null;
+  goalId?: string | null;
+}
+
+// --- calendar_integration/schemas.py — read-only Google Calendar (v1) ---
+export interface CalendarStatus {
+  connected: boolean;
+  accountEmail: string | null;
+}
+
+export interface CalendarOAuthStart {
+  authorizationUrl: string;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  location: string | null;
 }

@@ -123,15 +123,45 @@ class ManualTaskCreateRequest(BaseModel):
 
 
 class GoalCreateRequest(BaseModel):
-    """FR-5.1 — a goal is just a text label, no sub-structure in MVP."""
+    """FR-5.1, extended for V2 hierarchy (Blueprint §13). `tier` is optional —
+    omitting it creates a flat MVP-style goal with no hierarchy participation
+    at all, exactly as before. `parentGoalId` is intentionally NOT accepted
+    here: assigning a parent is a separate, deliberate action (PATCH), not
+    part of the low-friction creation flow — mirrors FR-3.4's reasoning for
+    why manual task creation doesn't accept goalId either (UX Philosophy
+    §5.4: structure is discovered, not required up front)."""
     label: str = Field(..., min_length=1, max_length=200)
+    tier: Optional[Literal["Annual", "Quarterly", "Project", "Milestone"]] = None
+
+
+class GoalUpdateRequest(BaseModel):
+    """Every field optional, same one-tap-correction shape as
+    TaskUpdateRequest — a change can touch just one field, no confirmation
+    implied by the contract's shape.
+
+    `parentGoalId`: `None` is a valid, meaningful value (clear the parent),
+    distinct from "field not sent" — routes.py uses `exclude_unset=True` so
+    an explicit `{"parentGoalId": null}` clears the link while an absent
+    key leaves it untouched (identical pattern to TaskUpdateRequest.goalId).
+    """
+    label: Optional[str] = Field(None, min_length=1, max_length=200)
+    tier: Optional[Literal["Annual", "Quarterly", "Project", "Milestone"]] = None
+    parentGoalId: Optional[uuid.UUID] = None
 
 
 class GoalResponse(BaseModel):
     id: uuid.UUID
     label: str
+    tier: Optional[Literal["Annual", "Quarterly", "Project", "Milestone"]]
+    parentGoalId: Optional[uuid.UUID]
     createdAt: datetime
 
     @classmethod
     def from_model(cls, goal) -> "GoalResponse":
-        return cls(id=goal.id, label=goal.label, createdAt=goal.created_at)
+        return cls(
+            id=goal.id,
+            label=goal.label,
+            tier=goal.tier.value if goal.tier else None,
+            parentGoalId=goal.parent_goal_id,
+            createdAt=goal.created_at,
+        )

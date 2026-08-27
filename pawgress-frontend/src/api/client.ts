@@ -4,9 +4,20 @@ import type {
   Task,
   TaskUpdateRequest,
   Goal,
+  GoalCreateRequest,
+  GoalUpdateRequest,
   ManualTaskCreateRequest,
   CompanionState,
   Profile,
+  JournalEntry,
+  JournalEntryCreateRequest,
+  JournalEntryUpdateRequest,
+  Habit,
+  HabitCreateRequest,
+  HabitUpdateRequest,
+  CalendarStatus,
+  CalendarOAuthStart,
+  CalendarEvent,
 } from "../shared/types";
 
 const API_BASE_URL: string =
@@ -111,12 +122,16 @@ export function deleteTask(id: string, token: string): Promise<void> {
   return request<void>(`/tasks/${id}`, { method: "DELETE", token });
 }
 
-export function createGoal(label: string, token: string): Promise<Goal> {
-  return request<Goal>("/goals", { method: "POST", body: { label }, token });
+export function createGoal(payload: GoalCreateRequest, token: string): Promise<Goal> {
+  return request<Goal>("/goals", { method: "POST", body: payload, token });
 }
 
 export function listGoals(token: string): Promise<Goal[]> {
   return request<Goal[]>("/goals", { token });
+}
+
+export function updateGoal(id: string, patch: GoalUpdateRequest, token: string): Promise<Goal> {
+  return request<Goal>(`/goals/${id}`, { method: "PATCH", body: patch, token });
 }
 
 export function deleteGoal(id: string, token: string): Promise<void> {
@@ -129,4 +144,66 @@ export function getCompanionState(token: string): Promise<CompanionState> {
 
 export function getProfile(token: string): Promise<Profile> {
   return request<Profile>("/auth/me", { token });
+}
+
+export function createJournalEntry(payload: JournalEntryCreateRequest, token: string): Promise<JournalEntry> {
+  return request<JournalEntry>("/journal", { method: "POST", body: payload, token });
+}
+
+export function listJournalEntries(token: string): Promise<JournalEntry[]> {
+  return request<JournalEntry[]>("/journal", { token });
+}
+
+export function updateJournalEntry(
+  id: string,
+  patch: JournalEntryUpdateRequest,
+  token: string
+): Promise<JournalEntry> {
+  return request<JournalEntry>(`/journal/${id}`, { method: "PATCH", body: patch, token });
+}
+
+export function deleteJournalEntry(id: string, token: string): Promise<void> {
+  return request<void>(`/journal/${id}`, { method: "DELETE", token });
+}
+
+export function createHabit(payload: HabitCreateRequest, token: string): Promise<Habit> {
+  return request<Habit>("/habits", { method: "POST", body: payload, token });
+}
+
+export function listHabits(token: string): Promise<Habit[]> {
+  return request<Habit[]>("/habits", { token });
+}
+
+export function updateHabit(id: string, patch: HabitUpdateRequest, token: string): Promise<Habit> {
+  return request<Habit>(`/habits/${id}`, { method: "PATCH", body: patch, token });
+}
+
+export function deleteHabit(id: string, token: string): Promise<void> {
+  return request<void>(`/habits/${id}`, { method: "DELETE", token });
+}
+
+export function markHabitComplete(id: string, token: string): Promise<Habit> {
+  return request<Habit>(`/habits/${id}/completions`, { method: "POST", token });
+}
+
+/** `date` must be an ISO YYYY-MM-DD string matching the backend's UTC-day
+ * convention (see habits/models.py's today_utc()). */
+export function unmarkHabitComplete(id: string, date: string, token: string): Promise<Habit> {
+  return request<Habit>(`/habits/${id}/completions/${date}`, { method: "DELETE", token });
+}
+
+export function getCalendarStatus(token: string): Promise<CalendarStatus> {
+  return request<CalendarStatus>("/calendar/status", { token });
+}
+
+export function startCalendarOAuth(token: string): Promise<CalendarOAuthStart> {
+  return request<CalendarOAuthStart>("/calendar/oauth/start", { token });
+}
+
+export function listCalendarEvents(token: string): Promise<CalendarEvent[]> {
+  return request<CalendarEvent[]>("/calendar/events", { token });
+}
+
+export function disconnectCalendar(token: string): Promise<void> {
+  return request<void>("/calendar/connection", { method: "DELETE", token });
 }

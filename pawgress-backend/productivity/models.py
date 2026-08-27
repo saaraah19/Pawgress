@@ -48,6 +48,27 @@ class TaskOrigin(str, enum.Enum):
     MANUALLY_CREATED = "ManuallyCreated"
 
 
+class GoalTier(str, enum.Enum):
+    """V2 goal hierarchy (Blueprint §13): Annual -> Quarterly -> Project ->
+    Milestone, in strictly decreasing order of scope. A Goal's tier is
+    OPTIONAL (see Goal.tier below) — assigning one is how a user opts into
+    hierarchy at all, per Domain Model §4.3's "the system earns hierarchy,
+    it doesn't assume it." Ordinal position in this list is meaningful and
+    is what goal_service.py's parent/child validation compares against —
+    do not reorder without updating that comparison."""
+    ANNUAL = "Annual"
+    QUARTERLY = "Quarterly"
+    PROJECT = "Project"
+    MILESTONE = "Milestone"
+
+
+# Ordinal rank per tier — lower number = broader scope. Used by
+# goal_service.py to enforce "a parent must be a strictly higher tier than
+# its child," which is also what makes a hierarchy cycle structurally
+# impossible (a chain of strictly-decreasing ranks can never loop back).
+GOAL_TIER_RANK: dict[GoalTier, int] = {tier: rank for rank, tier in enumerate(GoalTier)}
+
+
 class Capture(Base):
     """Domain Model §4.4 — permanent, retained record from day one, even though
     no MVP UI currently surfaces "your capture history." raw_text is immutable
@@ -68,17 +89,33 @@ class Capture(Base):
 
 
 class Goal(Base):
-    """Domain Model §4.3 — a single, flat label a Task can optionally point to.
-    Deliberately minimal: no parent/child relationship, no deadline, no status
-    (Goal hierarchy is explicitly Version 2, Domain Model §13). Goal has no
-    reverse-navigable collection of Tasks as a first-class relationship —
-    "which tasks link to this goal" is a query (Task.goal_id lookup), not an
-    ownership relationship, per Domain Model §8's aggregate-boundary note."""
+    """Domain Model §4.3, extended for V2 hierarchy (Blueprint §13).
+
+    MVP behavior is fully preserved for anyone who doesn't engage with
+    hierarchy: `tier` and `parent_goal_id` are both nullable, and a Goal
+    with tier=NULL behaves exactly like the original flat MVP Goal — a
+    single label, no structure. Assigning a tier is how a user opts into
+    hierarchy at all (Domain Model §4.3: "the system earns hierarchy, it
+    doesn't assume it") — this is enforced at the schema level, not just
+    in the UI: `parent_goal_id` may only be set when both this Goal and
+    its proposed parent already have a tier (see goal_service.py), so an
+    untiered goal can neither have a parent nor be one.
+
+    parent_goal_id: nullable, self-referential, single-valued (a Goal has
+    at most one parent — this is a tree, not a general graph). No DB-level
+    ON DELETE CASCADE or SET NULL, same reasoning as Task.goal_id below and
+    ADR 0001's Decision 1: unlinking children when a Goal is deleted is
+    handled explicitly by goal_service.py, so the invariant lives in one
+    deliberate, testable function rather than implicit DDL that could stay
+    "accidentally correct" only until some other code path deletes a row.
+    """
     __tablename__ = "goals"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     label = Column(String, nullable=False)
+    tier = Column(Enum(GoalTier, values_callable=lambda x: [e.value for e in x]), nullable=True)
+    parent_goal_id = Column(UUID(as_uuid=True), ForeignKey("goals.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 

@@ -8,3 +8,7 @@ export const TASKS_QUERY_KEY = ["tasks"] as const;
 export const GOALS_QUERY_KEY = ["goals"] as const;
 export const COMPANION_QUERY_KEY = ["companion", "state"] as const;
 export const PROFILE_QUERY_KEY = ["profile"] as const;
+export const JOURNAL_QUERY_KEY = ["journal"] as const;
+export const HABITS_QUERY_KEY = ["habits"] as const;
+export const CALENDAR_STATUS_QUERY_KEY = ["calendar", "status"] as const;
+export const CALENDAR_EVENTS_QUERY_KEY = ["calendar", "events"] as const;

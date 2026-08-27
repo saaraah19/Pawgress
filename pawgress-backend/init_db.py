@@ -14,6 +14,9 @@ from shared.database import Base, engine
 # though the names aren't used directly below.
 from identity.models import User  # noqa: F401
 from productivity.models import Capture, Task, Goal, FieldCorrectionRecord  # noqa: F401
+from journal.models import JournalEntry  # noqa: F401
+from habits.models import Habit, HabitCompletion  # noqa: F401
+from calendar_integration.models import CalendarConnection  # noqa: F401
 
 if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)
