@@ -1,12 +1,104 @@
 # Pawgress — Project Progress
 
-**Last updated:** 2026-08-22, frontend test infrastructure — done.
+**Last updated:** 2026-08-26, visual consistency pass — done.
 
 This file is the single place to check "where are we right now" without
 re-deriving it from chat history. Updated at the end of every slice —
 whoever picks this up next (human or Claude instance) should be able to
 read this file alone and know exactly what's done, what's in flight, and
 what's next.
+
+---
+
+## Phase change (2026-08-26): from "add V2 features" to "make it production-ready"
+
+Sarah's explicit direction: stop measuring progress by new features and
+instead focus on product feel, UX clarity, mobile usability, visual
+consistency, accessibility, reliability, database correctness, and
+deployment readiness. The default sequence, confirmed against the real
+repo state, not assumed:
+
+1. First Capture empty-state companion treatment — ✅ done (2026-08-26)
+2. Visual consistency pass — ✅ **done this slice** — see write-up below
+3. Mobile responsiveness — not started, **next up**
+4. Accessibility and keyboard refinement — partial (Polish Slice 1), needs a real audit
+5. Testing and QA — frontend tooling exists, coverage still narrow
+6. Alembic/database readiness — migrations exist; Sarah still hasn't run `stamp`+`upgrade` against her real Neon DB
+7. Production configuration — not started
+8. Deployment — nothing exists yet, no hosting chosen
+9. Real deployed smoke testing — blocked on #8
+
+**Important standing note, worth re-reading if a future session ever finds
+a mismatch between this file and the real repo again:** on 2026-08-26, a
+repo audit found that the real GitHub repo was frozen at Polish Sprint
+Slice 1 (2026-08-07) — every slice since (Companion Character, Alembic,
+Goal Hierarchy, Journal, Habits, Calendar, frontend test infra) existed
+only in delivered zip files, never merged. Sarah merged everything that
+day. **Always verify the real repo directly before trusting this file or
+chat history — a zip being delivered is not the same as it being merged.**
+
+---
+
+## Just Completed: Visual Consistency Pass (2026-08-26)
+
+Real audit, not a guess — read through every page component and the full
+`index.css` before touching anything, per the explicit instruction to use
+the existing design language rather than inventing a new one, and not to
+redesign screens merely because it's possible.
+
+**Fixed, all small and reversible:**
+- **Missing page headings.** Every page (Goals, Habits, Calendar,
+  Account, Login, Register) has an `<h1>` matching its nav label —
+  `CapturePage` and `JournalPage` had none at all, the two most-visited
+  pages in the app being the exception. Added `<h1>Today</h1>` and
+  `<h1>Journal</h1>`, matching their `AppShell` nav labels exactly.
+- **A real CSS scoping gap this surfaced**: the shared `<h1>` sizing rule
+  was scoped to `.card h1` only. Since `CapturePage`/`JournalPage` don't
+  use the `.card` wrapper (see the open question below), a bare new
+  `<h1>` on either would have picked up the browser's oversized default
+  heading style instead of matching every other page. Fixed by
+  broadening the selector to `.page h1` — every existing page already
+  sits inside a `.page` wrapper (confirmed by checking all of them, not
+  assumed), so this is a no-op for every heading that already worked
+  correctly, and fixes the two that didn't.
+- **Card width drift.** `.goals-card` (480px) and `.habits-card` (560px)
+  were both narrower than the three other list-style pages —
+  `.capture-card`, `.journal-entries-section`, `.calendar-card` — which
+  all already agreed on 620px. No content-driven reason for the
+  difference existed; unified Goals and Habits to 620px too. Account/
+  Login/Register's narrower 380px `.card` is a separate, legitimate case
+  (simple forms, not lists) and was left untouched.
+- **Inconsistent loading-state wording.** `GoalsPage`, `TaskList`, and
+  Calendar's events fetch all said "Loading [the specific thing]..."; 
+  Habits, Journal, and Account just said the generic "Loading...", with
+  no reason for the split. Made all three specific
+  ("Loading habits...", "Loading entries...", "Loading account...").
+  Calendar's connection-status check keeps its plain "Loading..." —
+  genuinely a different case (checking whether a feature is even active
+  yet, not loading a list of things), not drift.
+- **Dead code removed**: `features/tasks/HomePlaceholder.tsx` and
+  `features/companion/CompanionIndicator.tsx` — both fully unreferenced
+  (confirmed via repo-wide search before deleting, not assumed), both
+  superseded by real pages/components built in later slices. Their
+  continued presence risked a future session mistaking them for live code.
+
+**Deliberately NOT touched — flagged as an open design question instead
+of decided unilaterally:** `CapturePage` and `JournalPage` use a flowing,
+unboxed layout (no `.card` background/border/padding); `GoalsPage`,
+`HabitsPage`, `CalendarPage`, `AccountPage`, `LoginPage`, and
+`RegisterPage` all wrap their content in the bordered `.card` treatment.
+This is a real, consistent structural split, not accidental drift — every
+page in each group agrees with itself. Reconciling it either direction
+(box everything, or unbox everything) would be a genuine redesign
+decision affecting how several pages feel, which the instructions for
+this pass explicitly said not to do ("do not redesign screens merely
+because you can"). Worth a real, explicit conversation before ever
+touching it — not something to quietly pick a side on under a
+consistency-pass banner.
+
+**Verified:** `tsc -b` clean, full frontend test suite (24/24 passing,
+unchanged — this pass touched no logic, only markup/CSS/dead-code
+removal), `vite build` clean (112 modules, same as before).
 
 ---
 
@@ -40,6 +132,83 @@ the real Google integration works end-to-end).
 Calendar is opt-in — the rest of the app runs completely normally without
 any of this done; `/calendar/oauth/start` just returns a clear 503
 ("Google Calendar isn't configured") until it is.
+
+**Also still outstanding, confirmed as of 2026-08-26:** Sarah has not yet
+run `alembic stamp a6bf4696c8da` + `alembic upgrade head` against her real
+Neon DB. Goal hierarchy, Journal, Habits, and Calendar will not work
+against her real database until she does — see the exact commands and
+reasoning in the "Alembic Baseline" section below.
+
+---
+
+## Just Completed: First Capture Empty-State Companion Treatment (2026-08-26)
+
+The one piece of the original companion-character-spec.md still open:
+"cat waiting beside the input," approved 2026-08-09, blocked ever since
+on the real `CompanionCharacter` component not existing yet — it does
+now, so this closed the loop.
+
+**Scope, exactly as directed:** calm, passive, visually pleasant,
+non-instructional, non-judgmental. Not a tutorial, not a reward, not a
+productivity mechanic. No larger companion feature added.
+
+**Key design decision, made and recorded, not left implicit:** this is a
+single **static image** (`idle-calm.png` via the existing
+`COMPANION_EXPRESSION_ASSETS` export), not a second live
+`CompanionCharacter` instance. The header already renders one
+independently-animating companion with its own random expression state
+(`useCompanionBehavior`); mounting a second instance on the same page
+would risk two visibly different expressions on screen simultaneously,
+reading as "two cats" rather than one calm presence — synchronizing them
+would require new shared-state infrastructure, which is exactly the
+"larger companion feature" scope creep this slice was told to avoid. A
+static image is also the more literal reading of "passive" than adding
+more independent animation.
+
+**Trigger condition:** shown whenever the task list is currently empty
+(`tasksQuery.data?.length === 0`) and no capture result is being
+displayed — deliberately NOT tied to any "is this a brand-new account"
+flag. This matches UX Philosophy §5.5 (Return-After-Absence gets zero
+special treatment): the product never distinguishes a first-ever empty
+state from a returned-to-zero one, so this doesn't either. Explicitly
+checks `tasksQuery.data` (not just "no visible tasks"), so the image
+correctly stays hidden while the query is still loading rather than
+flashing on before real data arrives.
+
+**Implementation:** `CapturePage.tsx` now also subscribes to
+`TASKS_QUERY_KEY` (shares the exact same cache `TaskList` already
+populates — no extra network request), and conditionally renders the
+static image above `CaptureForm`. New CSS (`.capture-waiting-companion`)
+— fixed modest size (88px), centered, no border/card treatment, floats
+on the page background rather than looking like a boxed UI element.
+
+**Real bugs caught while writing this slice's test, not in a later
+review:**
+- First test attempt queried `getByRole("img")` — failed, because the
+  image correctly uses `alt=""` (proper practice for a purely decorative
+  image per WAI-ARIA), which means the browser assigns it
+  `role="presentation"`, not `role="img"`. `getByRole("img")` can never
+  match it regardless of Testing Library's `hidden` option. Fixed by
+  querying via a plain CSS class selector instead — the accurate approach
+  for an intentionally non-semantic image, not a workaround.
+- Second attempt asserted on task titles via `findByText("Buy milk")` —
+  failed, because `TaskRow.tsx` renders titles as an editable
+  `<input value="...">`, not a text node. Fixed with
+  `findByDisplayValue`.
+- `vi.fn<[], Promise<Task[]>>()` — outdated two-type-parameter generic
+  syntax from an older Vitest version; `tsc -b` (not `vitest run`, which
+  transpiles more loosely) caught this. Fixed to the current
+  single-function-type syntax, `vi.fn<() => Promise<Task[]>>()`.
+
+**Testing:** new `CapturePage.test.tsx`, 3 tests (shows when empty,
+hidden once a task exists, hidden while still loading). Full frontend
+suite: **24/24 passing** (21 prior + 3 new). `tsc -b` clean, `vite build`
+clean (112 modules, same as before — confirms no new dependency or asset
+weight was introduced).
+
+**Also logged, not acted on:** Sarah's direct feedback (2026-08-26) that
+Habits' UI/UX could be better — no specifics given yet, explicitly
+deferred by her own call. See "Known, deliberate gaps" below.
 
 ---
 
@@ -128,7 +297,11 @@ reasonable next investment, not a claim being made now.
 
 ---
 
-## Phase
+## Phase History: V2 Development (2026-08-16 through 2026-08-22)
+
+**Historical record — see "Phase change" at the top of this file for the
+current phase.** Kept here rather than deleted, since it explains the
+reasoning behind Slices A–E below.
 
 **V2 development, pulled forward from the Polish Sprint (2026-08-16).**
 Sarah made a deliberate call: rather than continue polishing the MVP,
@@ -580,7 +753,13 @@ credentials set, specifically to confirm this exact path.
 
 ---
 
-## V2 Roadmap (current priority order, per Sarah 2026-08-15)
+## V2 Roadmap (paused 2026-08-26 — was active 2026-08-15 through 2026-08-22)
+
+**Status as of the phase change:** items 1–5 done, item 6 stays
+intentionally out of reach. No further V2 feature work is planned until
+the product-polish/production-readiness phase (see top of this file) is
+through — that's a deliberate sequencing choice, not item 6 becoming
+buildable.
 
 | # | Piece | Status |
 |---|---|---|
@@ -591,28 +770,31 @@ credentials set, specifically to confirm this exact path.
 | 5 | Calendar integration (Slice E) | ✅ **Done, read-only v1** — see below. Real live testing blocked on Sarah's manual Google Cloud Console setup (see top of this file). |
 | 6 | Weekly Reviews / pattern detection / AI Coach | ⬜ **Not honestly buildable yet** — needs real usage history that doesn't exist yet |
 
-**Still deferred, unchanged from before:** companion placement change
-(header → near/on top of task list), remaining Polish Sprint items.
+**No longer accurate — corrected 2026-08-26:** the line below used to say
+companion placement and Polish Sprint items were deferred until after V2
+substance. That threshold has been reached; the Polish Sprint (including
+the companion-placement idea) is now the active work again — see its own
+roadmap section below, not this stale note.
 
-**Deferred to after V2 substance** (Sarah's explicit call, 2026-08-15):
+<s>**Deferred to after V2 substance** (Sarah's explicit call, 2026-08-15):
 - Companion placement change (header → near/on top of the task list) — see
   the open design idea logged under Companion Character below.
 - Remaining Polish Sprint items (empty states' last piece, onboarding,
-  visual consistency, mobile responsiveness) — paused, not abandoned.
+  visual consistency, mobile responsiveness) — paused, not abandoned.</s>
 
 ---
 
-## Polish Sprint Roadmap (paused 2026-08-16 — resumes after V2 substance)
+## Polish Sprint Roadmap (resumed 2026-08-26 — this is now the active work)
 
 | # | Slice | Status |
 |---|---|---|
-| 1 | Empty states designed around the companion | 🟡 Mostly done — task list + goals shipped; "cat waiting beside input" (First Capture) treatment approved but not yet built, and now a natural candidate for re-skinning onto `CompanionCharacter` |
+| 1 | Empty states designed around the companion | ✅ **Done (2026-08-26)** — "cat waiting beside input" First Capture treatment built (static image, see write-up near top of this file). Task list + goals empty states were already done. |
 | 2 | Companion presence refinement | ✅ Done (2026-08-15) |
 | 3 | Onboarding through design, not tutorials | ⬜ Not started — only if genuinely needed |
-| 4 | Keyboard and accessibility improvements | 🟢 Partially done (Slice 1 of this sprint) |
-| 5 | Visual consistency pass | ⬜ Not started |
-| 6 | Mobile responsiveness review | ⬜ Not started |
-| 7 | Final infrastructure pass | ✅ Alembic baseline done (as Slice A above, pulled forward early since the goal hierarchy needed it); remaining cleanup still open |
+| 4 | Keyboard and accessibility improvements | 🟡 Partial (Slice 1 of the original sprint) — needs a real audit per the 2026-08-26 direction, not assumed sufficient |
+| 5 | Visual consistency pass | ✅ **Done (2026-08-26)** — see write-up near top of this file. Open question flagged, not resolved: whether Capture/Journal's unboxed layout should match Goals/Habits/Calendar/Account's boxed `.card` treatment, or vice versa. |
+| 6 | Mobile responsiveness review | ⬜ **Next up** — real audit required, not "a few media queries" |
+| 7 | Final infrastructure pass | 🟡 Alembic tooling exists; Sarah still hasn't run `stamp`+`upgrade` against her real DB (see manual-steps section near top) |
 
 ---
 
@@ -770,6 +952,13 @@ this one, reference it as if it's already there).
 
 ## Known, deliberate gaps (not oversights)
 
+- **Habits UI/UX** — Sarah's feedback after using it for real (2026-08-26):
+  "would've loved the UI/UX to be better." Explicitly deferred by her own
+  call, not urgent — logged here so it isn't lost before a future pass.
+  No specifics given yet on what feels off; worth a real conversation
+  about what specifically isn't landing before redesigning anything
+  (current implementation: `HabitRow`'s always-editable-input label,
+  plain circular toggle, accumulating-count text) rather than guessing.
 - **First-capture helper text** — explicitly on hold, revisit after living
   with the interface longer. The narrower "cat waiting" presence-only
   version is a *separate* question, still awaiting a build slice (see

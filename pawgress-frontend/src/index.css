@@ -195,7 +195,7 @@ a {
   padding: var(--space-6);
 }
 
-.card h1 {
+.page h1 {
   font-size: 1.4rem;
   margin: 0 0 var(--space-5) 0;
 }
@@ -487,6 +487,22 @@ button.link:disabled {
   width: 100%;
   max-width: 620px;
   margin: 0 auto;
+}
+
+/* First Capture empty-state companion treatment (companion-character-
+   spec.md §4.3, approved 2026-08-09, built 2026-08-26). Deliberately
+   static — no animation, no independent behavior instance (see
+   CapturePage.tsx's comment on why not a second live CompanionCharacter)
+   — sitting calmly above the input with generous breathing room, not
+   boxed or bordered, so it reads as ambient presence rather than a UI
+   element competing with the capture form for attention. No text, no
+   instruction, no reward framing — the cat is simply there. */
+.capture-waiting-companion {
+  display: block;
+  width: 88px;
+  height: 88px;
+  margin: 0 auto var(--space-5);
+  object-fit: contain;
 }
 
 .capture-form {
@@ -822,7 +838,13 @@ button.link:disabled {
    ========================================================================== */
 
 .goals-card {
-  max-width: 480px;
+  /* Unified with capture-card/journal-entries-section/calendar-card's
+     already-established 620px "standard list page" width (visual
+     consistency pass, 2026-08-26) — was 480px, an arbitrary divergence
+     from every other list-style page with no content-driven reason for
+     the difference. Auth/Account's narrower 380px .card is a deliberate,
+     separate case (simple form content, not a list) and stays as-is. */
+  max-width: 620px;
 }
 
 /* ==========================================================================
@@ -965,7 +987,10 @@ button.link:disabled {
    ========================================================================== */
 
 .habits-card {
-  max-width: 560px;
+  /* Unified with the other list-style pages — see .goals-card's comment
+     for the full reasoning (visual consistency pass, 2026-08-26). Was
+     560px. */
+  max-width: 620px;
 }
 
 .habit-form {

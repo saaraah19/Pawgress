@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
-import { createCapture } from "../../api/client";
+import { createCapture, listTasks } from "../../api/client";
 import { CaptureForm } from "./CaptureForm";
 import { CaptureResult } from "./CaptureResult";
 import { TaskList } from "../tasks/TaskList";
 import { TASKS_QUERY_KEY } from "../../shared/queryKeys";
 import { useCompanionReaction } from "../companion/CompanionReactionContext";
+import { COMPANION_EXPRESSION_ASSETS } from "../companion/companionConfig";
 import type { CaptureResult as CaptureResultType } from "../../shared/types";
 
 export function CapturePage() {
@@ -15,6 +16,24 @@ export function CapturePage() {
   const { reactToCapture } = useCompanionReaction();
   const [result, setResult] = useState<CaptureResultType | null>(null);
   const [formKey, setFormKey] = useState(0);
+
+  // Shares the same cache TaskList already populates (TASKS_QUERY_KEY) —
+  // this doesn't cause a second network request, just reads the cached
+  // result to decide whether to show the "cat waiting beside input"
+  // treatment below (companion-character-spec.md §4.3's approved empty
+  // state, PROGRESS.md: "passive, ambient, Idle pose, no copy, no reward
+  // framing"). Keyed off "the list is currently empty," not off any
+  // "is this a brand-new account" flag — deliberately, since the product
+  // never distinguishes a first-time empty state from a returned-to-zero
+  // one (UX Philosophy §5.5, Return-After-Absence gets zero special
+  // treatment); the same calm, non-judgmental presence is appropriate
+  // either way.
+  const tasksQuery = useQuery({
+    queryKey: TASKS_QUERY_KEY,
+    queryFn: () => listTasks(token!),
+    enabled: !!token,
+  });
+  const showWaitingCompanion = tasksQuery.data?.length === 0 && !result;
 
   const mutation = useMutation({
     mutationFn: (rawText: string) => createCapture(rawText, token!),
@@ -50,6 +69,25 @@ export function CapturePage() {
   return (
     <div className="page capture-page">
       <div className="capture-card">
+        <h1>Today</h1>
+
+        {showWaitingCompanion && (
+          // Deliberately a single static image, not a second live
+          // CompanionCharacter instance — the header already renders one
+          // independently-animating companion (its own random expression
+          // state); mounting a second would risk two visibly different
+          // expressions on screen at once, which reads as confusing
+          // ("two cats?") rather than as one calm presence. A plain,
+          // motionless image is also the more literal reading of
+          // "passive" than adding more independent animation.
+          <img
+            className="capture-waiting-companion"
+            src={COMPANION_EXPRESSION_ASSETS.calm}
+            alt=""
+            aria-hidden="true"
+          />
+        )}
+
         <CaptureForm
           key={formKey}
           onSubmit={(text) => mutation.mutate(text)}

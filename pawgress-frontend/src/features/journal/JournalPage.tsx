@@ -128,6 +128,8 @@ export function JournalPage() {
   return (
     <div className="page journal-page">
       <div className="capture-card">
+        <h1>Journal</h1>
+
         <form onSubmit={handleSubmit} className="capture-form">
           <textarea
             className="capture-textarea"
@@ -149,7 +151,7 @@ export function JournalPage() {
       </div>
 
       <div className="journal-entries-section">
-        {entriesQuery.isLoading && <p className="muted">Loading...</p>}
+        {entriesQuery.isLoading && <p className="muted">Loading entries...</p>}
 
         {entriesQuery.isError && (
           <div className="notice">

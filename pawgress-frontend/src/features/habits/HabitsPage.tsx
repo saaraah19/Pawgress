@@ -281,7 +281,7 @@ export function HabitsPage() {
 
         {formError && <div className="notice">{formError}</div>}
 
-        {habitsQuery.isLoading && <p className="muted">Loading...</p>}
+        {habitsQuery.isLoading && <p className="muted">Loading habits...</p>}
 
         {habitsQuery.isError && (
           <div className="notice">

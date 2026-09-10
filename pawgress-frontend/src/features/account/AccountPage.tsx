@@ -27,7 +27,7 @@ export function AccountPage() {
       <div className="card">
         <h1>Account</h1>
 
-        {query.isLoading && <p className="muted">Loading...</p>}
+        {query.isLoading && <p className="muted">Loading account...</p>}
 
         {query.isError && (
           <div className="notice">
