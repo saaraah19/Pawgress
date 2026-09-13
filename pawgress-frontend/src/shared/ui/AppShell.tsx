@@ -1,6 +1,15 @@
 import { type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
+
+const NAV_ITEMS: { to: string; label: string; end?: boolean }[] = [
+  { to: "/", label: "Today", end: true },
+  { to: "/goals", label: "Goals" },
+  { to: "/journal", label: "Journal" },
+  { to: "/habits", label: "Habits" },
+  { to: "/calendar", label: "Calendar" },
+  { to: "/account", label: "Account" },
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { logout } = useAuth();
@@ -15,24 +24,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="app-header-title">Pawgress</span>
         </div>
         <nav className="app-nav" aria-label="Main">
-          <Link className="link" to="/">
-            Today
-          </Link>
-          <Link className="link" to="/goals">
-            Goals
-          </Link>
-          <Link className="link" to="/journal">
-            Journal
-          </Link>
-          <Link className="link" to="/habits">
-            Habits
-          </Link>
-          <Link className="link" to="/calendar">
-            Calendar
-          </Link>
-          <Link className="link" to="/account">
-            Account
-          </Link>
+          {NAV_ITEMS.map((item) => (
+            <NavLink key={item.to} className="app-nav-link" to={item.to} end={item.end}>
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
         <button className="link" onClick={logout}>
           Log out

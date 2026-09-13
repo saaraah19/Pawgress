@@ -90,7 +90,7 @@ export function CapturePage() {
           needing a separate conditional image for it.
         */}
         <div className="task-list-companion">
-          <CompanionCharacter ref={companionRef} size={40} />
+          <CompanionCharacter ref={companionRef} size={110} />
         </div>
         <TaskList />
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import { createJournalEntry, listJournalEntries, updateJournalEntry, deleteJournalEntry } from "../../api/client";
@@ -8,8 +8,49 @@ import type { JournalEntry } from "../../shared/types";
 
 const UNDO_WINDOW_MS = 5000;
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+/** Grouping is by the entry's own local calendar day — deliberately NOT
+ * the UTC-day convention used elsewhere (e.g. Habits) — a journal entry
+ * written at 11pm should read as "today" to the person who wrote it, not
+ * flip to the next day because a server clock is in UTC. This is pure
+ * display grouping of an already-fetched timestamp; nothing here is a
+ * durable concept the backend needs to agree on. */
+function dayKeyOf(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function dayHeadingLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+}
+
+function dayChipLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function timeLabel(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+interface DayGroup {
+  dayKey: string;
+  entries: JournalEntry[];
+}
+
+/** Entries arrive already sorted desc by createdAt (backend's
+ * list_journal_entries ordering) — grouping consecutive same-day entries
+ * preserves that order rather than re-sorting. */
+function groupByDay(entries: JournalEntry[]): DayGroup[] {
+  const groups: DayGroup[] = [];
+  for (const entry of entries) {
+    const key = dayKeyOf(entry.createdAt);
+    const last = groups[groups.length - 1];
+    if (last && last.dayKey === key) {
+      last.entries.push(entry);
+    } else {
+      groups.push({ dayKey: key, entries: [entry] });
+    }
+  }
+  return groups;
 }
 
 /**
@@ -18,10 +59,17 @@ function formatDate(iso: string): string {
  * Nothing typed here is ever sent through extraction; this page never
  * calls createCapture. Plain writing in, plain writing back, nothing else.
  *
+ * Day-grouped with a day filter (2026-09-13, owner's explicit request) —
+ * replaces one long undifferentiated scroll of entries with a heading per
+ * calendar day plus a row of day chips to jump straight to one day,
+ * which stays usable as entry count grows rather than degrading into
+ * endless scrolling. No backend change needed: entries are already
+ * fetched in full and grouping/filtering happens client-side.
+ *
  * No streak/frequency signal of any kind (generalizing FR-6.2's
- * no-absence-shaming principle beyond just the companion) — the empty
- * state and the page as a whole never mention how long it's been since
- * the last entry.
+ * no-absence-shaming principle beyond just the companion) — day chips are
+ * a navigation aid, not a completion tracker; a day with zero entries
+ * simply doesn't appear as a chip, no "you skipped this day" framing.
  */
 export function JournalPage() {
   const { token } = useAuth();
@@ -32,6 +80,7 @@ export function JournalPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const deleteTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const entriesQuery = useQuery({
@@ -45,6 +94,7 @@ export function JournalPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: JOURNAL_QUERY_KEY });
       setDraft("");
+      setSelectedDay(null); // a fresh entry should be visible immediately, not hidden behind an old filter
     },
   });
 
@@ -124,6 +174,8 @@ export function JournalPage() {
   }
 
   const visibleEntries = (entriesQuery.data ?? []).filter((e) => !pendingDeleteIds.has(e.id));
+  const allGroups = useMemo(() => groupByDay(visibleEntries), [visibleEntries]);
+  const displayedGroups = selectedDay ? allGroups.filter((g) => g.dayKey === selectedDay) : allGroups;
 
   return (
     <div className="page journal-page">
@@ -166,56 +218,82 @@ export function JournalPage() {
           <p className="empty-state">Nothing written yet.</p>
         )}
 
-        {visibleEntries.length > 0 && (
-          <ul className="journal-entry-list">
-            {visibleEntries.map((entry) => (
-              <li key={entry.id} className="journal-entry">
-                {editingId === entry.id ? (
-                  <div className="journal-entry-editing">
-                    <textarea
-                      className="capture-textarea"
-                      value={editText}
-                      autoFocus
-                      rows={4}
-                      onChange={(e) => setEditText(e.target.value)}
-                    />
-                    <div className="journal-entry-edit-actions">
-                      <button
-                        type="button"
-                        className="primary"
-                        disabled={updateMutation.isPending || !editText.trim()}
-                        onClick={() => saveEdit(entry.id)}
-                      >
-                        Save
-                      </button>
-                      <button type="button" className="link" onClick={() => setEditingId(null)}>
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <p className="journal-entry-date">{formatDate(entry.createdAt)}</p>
-                    <p className="journal-entry-text">{entry.text}</p>
-                    <div className="journal-entry-actions">
-                      <button type="button" className="link" onClick={() => startEditing(entry)}>
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="link task-delete"
-                        onClick={() => handleDeleteClick(entry)}
-                        aria-label="Delete this entry"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </>
-                )}
-              </li>
+        {allGroups.length > 1 && (
+          <div className="journal-day-filter" role="group" aria-label="Filter entries by day">
+            <button
+              type="button"
+              className={`journal-day-chip${selectedDay === null ? " is-active" : ""}`}
+              onClick={() => setSelectedDay(null)}
+            >
+              All
+            </button>
+            {allGroups.map((group) => (
+              <button
+                key={group.dayKey}
+                type="button"
+                className={`journal-day-chip${selectedDay === group.dayKey ? " is-active" : ""}`}
+                aria-pressed={selectedDay === group.dayKey}
+                onClick={() => setSelectedDay(group.dayKey === selectedDay ? null : group.dayKey)}
+              >
+                {dayChipLabel(group.entries[0].createdAt)} ({group.entries.length})
+              </button>
             ))}
-          </ul>
+          </div>
         )}
+
+        {displayedGroups.map((group) => (
+          <section key={group.dayKey} className="journal-day-group" aria-label={dayHeadingLabel(group.entries[0].createdAt)}>
+            <h2 className="journal-day-heading">{dayHeadingLabel(group.entries[0].createdAt)}</h2>
+            <ul className="journal-entry-list">
+              {group.entries.map((entry) => (
+                <li key={entry.id} className="journal-entry">
+                  {editingId === entry.id ? (
+                    <div className="journal-entry-editing">
+                      <textarea
+                        className="capture-textarea"
+                        value={editText}
+                        autoFocus
+                        rows={4}
+                        onChange={(e) => setEditText(e.target.value)}
+                      />
+                      <div className="journal-entry-edit-actions">
+                        <button
+                          type="button"
+                          className="primary"
+                          disabled={updateMutation.isPending || !editText.trim()}
+                          onClick={() => saveEdit(entry.id)}
+                        >
+                          Save
+                        </button>
+                        <button type="button" className="link" onClick={() => setEditingId(null)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="journal-entry-time">{timeLabel(entry.createdAt)}</p>
+                      <p className="journal-entry-text">{entry.text}</p>
+                      <div className="journal-entry-actions">
+                        <button type="button" className="link" onClick={() => startEditing(entry)}>
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="link task-delete"
+                          onClick={() => handleDeleteClick(entry)}
+                          aria-label="Delete this entry"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
       </div>
     </div>
   );

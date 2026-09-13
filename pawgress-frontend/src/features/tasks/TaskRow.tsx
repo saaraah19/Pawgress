@@ -17,7 +17,6 @@ export function TaskRow({ task, goals, onCommit, onDelete, saving }: TaskRowProp
   const [estimateText, setEstimateText] = useState(
     task.estimateMinutes !== null ? String(task.estimateMinutes) : ""
   );
-  const [linking, setLinking] = useState(false);
 
   useEffect(() => {
     setTitle(task.title);
@@ -67,7 +66,13 @@ export function TaskRow({ task, goals, onCommit, onDelete, saving }: TaskRowProp
     onCommit({ status: task.status === "Done" ? "NotStarted" : "Done" });
   }
 
-  const linkedGoal = goals.find((g) => g.id === task.goalId) ?? null;
+  function commitGoal(nextGoalId: string) {
+    const parsed = nextGoalId === "" ? null : nextGoalId;
+    if (parsed !== (task.goalId ?? null)) {
+      onCommit({ goalId: parsed });
+    }
+  }
+
   const disabled = saving;
 
   return (
@@ -133,36 +138,20 @@ export function TaskRow({ task, goals, onCommit, onDelete, saving }: TaskRowProp
       </span>
 
       {goals.length > 0 && (
-        <span className="field-goal-group">
-          {linkedGoal ? (
-            <button type="button" className="link" disabled={disabled} onClick={() => onCommit({ goalId: null })}>
-              {linkedGoal.label} ✕
-            </button>
-          ) : linking ? (
-            <span className="goal-picker" role="group" aria-label={`Link "${task.title}" to a goal`}>
-              {goals.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  className="link"
-                  onClick={() => {
-                    onCommit({ goalId: g.id });
-                    setLinking(false);
-                  }}
-                >
-                  {g.label}
-                </button>
-              ))}
-              <button type="button" className="link" onClick={() => setLinking(false)}>
-                Cancel
-              </button>
-            </span>
-          ) : (
-            <button type="button" className="link" disabled={disabled} onClick={() => setLinking(true)}>
-              Link to goal
-            </button>
-          )}
-        </span>
+        <select
+          className="field-inline field-goal"
+          value={task.goalId ?? ""}
+          disabled={disabled}
+          aria-label={`Link "${task.title}" to a goal`}
+          onChange={(e) => commitGoal(e.target.value)}
+        >
+          <option value="">No goal</option>
+          {goals.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.label}
+            </option>
+          ))}
+        </select>
       )}
 
       <button

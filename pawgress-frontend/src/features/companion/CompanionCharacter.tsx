@@ -12,9 +12,10 @@ export interface CompanionCharacterHandle {
 
 interface CompanionCharacterProps {
   /**
-   * Header/peripheral scale by default — Brand §10: the cat is presence,
-   * not progression, and should not grow larger just because real art now
-   * exists. Real art earns restraint, not a bigger stage.
+   * Daily View scale (Sarah's explicit call, 2026-09-13: the original
+   * 40px default read as too small once real art replaced the placeholder
+   * glyph). No longer a header-scale default — the header doesn't mount
+   * this component at all post-repositioning.
    */
   size?: number;
 }
@@ -48,7 +49,7 @@ interface CompanionCharacterProps {
  * non-interactive element's `title` attribute isn't reliably announced).
  */
 export const CompanionCharacter = forwardRef<CompanionCharacterHandle, CompanionCharacterProps>(
-  function CompanionCharacter({ size = 30 }, ref) {
+  function CompanionCharacter({ size = 110 }, ref) {
     const { token } = useAuth();
 
     const query = useQuery({
