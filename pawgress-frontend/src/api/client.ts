@@ -166,30 +166,62 @@ export function deleteJournalEntry(id: string, token: string): Promise<void> {
   return request<void>(`/journal/${id}`, { method: "DELETE", token });
 }
 
-export function createHabit(payload: HabitCreateRequest, token: string): Promise<Habit> {
-  return request<Habit>("/habits", { method: "POST", body: payload, token });
+/** `weekStart` is an ISO YYYY-MM-DD date (any date within the target week —
+ * the backend normalizes it to that week's Sunday, see habits/routes.py's
+ * `_week_start_of`). Scopes the returned `completedDates` to that week;
+ * omit to get the current week. */
+function weekQuery(weekStart?: string): string {
+  return weekStart ? `?weekStart=${weekStart}` : "";
 }
 
-export function listHabits(token: string): Promise<Habit[]> {
-  return request<Habit[]>("/habits", { token });
+export function createHabit(payload: HabitCreateRequest, token: string, weekStart?: string): Promise<Habit> {
+  return request<Habit>(`/habits${weekQuery(weekStart)}`, { method: "POST", body: payload, token });
 }
 
-export function updateHabit(id: string, patch: HabitUpdateRequest, token: string): Promise<Habit> {
-  return request<Habit>(`/habits/${id}`, { method: "PATCH", body: patch, token });
+export function listHabits(token: string, weekStart?: string): Promise<Habit[]> {
+  return request<Habit[]>(`/habits${weekQuery(weekStart)}`, { token });
+}
+
+export function updateHabit(
+  id: string,
+  patch: HabitUpdateRequest,
+  token: string,
+  weekStart?: string
+): Promise<Habit> {
+  return request<Habit>(`/habits/${id}${weekQuery(weekStart)}`, { method: "PATCH", body: patch, token });
 }
 
 export function deleteHabit(id: string, token: string): Promise<void> {
   return request<void>(`/habits/${id}`, { method: "DELETE", token });
 }
 
-export function markHabitComplete(id: string, token: string): Promise<Habit> {
-  return request<Habit>(`/habits/${id}/completions`, { method: "POST", token });
+/** `date` (ISO YYYY-MM-DD) defaults to today on the backend if omitted —
+ * pass it explicitly to toggle any cell in the week table, not just
+ * today's. `weekStart` scopes the response's completedDates to whichever
+ * week is currently being viewed (independent of which date was toggled),
+ * so toggling a past week's cell doesn't return data for today's week. */
+export function markHabitComplete(
+  id: string,
+  token: string,
+  date?: string,
+  weekStart?: string
+): Promise<Habit> {
+  const params = new URLSearchParams();
+  if (date) params.set("completion_date", date);
+  if (weekStart) params.set("weekStart", weekStart);
+  const qs = params.toString();
+  return request<Habit>(`/habits/${id}/completions${qs ? `?${qs}` : ""}`, { method: "POST", token });
 }
 
 /** `date` must be an ISO YYYY-MM-DD string matching the backend's UTC-day
  * convention (see habits/models.py's today_utc()). */
-export function unmarkHabitComplete(id: string, date: string, token: string): Promise<Habit> {
-  return request<Habit>(`/habits/${id}/completions/${date}`, { method: "DELETE", token });
+export function unmarkHabitComplete(
+  id: string,
+  date: string,
+  token: string,
+  weekStart?: string
+): Promise<Habit> {
+  return request<Habit>(`/habits/${id}/completions/${date}${weekQuery(weekStart)}`, { method: "DELETE", token });
 }
 
 export function getCalendarStatus(token: string): Promise<CalendarStatus> {

@@ -125,6 +125,10 @@ export interface Habit {
   // habits/models.py's docstring. Never resets, never "breaks."
   totalCompletions: number;
   completedToday: boolean;
+  // ISO dates with a completion, scoped to whichever week was requested
+  // (see api/client.ts's `weekStart` param) — a display convenience for
+  // the week table, not a second lifetime-progress signal.
+  completedDates: string[];
   createdAt: string;
 }
 

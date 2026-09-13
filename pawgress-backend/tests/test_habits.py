@@ -178,3 +178,45 @@ def test_cannot_access_another_users_habit(client, auth_headers, second_user_hea
 def test_habits_requires_auth(client):
     assert client.get("/habits").status_code == 403
     assert client.post("/habits", json={"label": "x", "frequency": "Daily"}).status_code == 403
+
+
+def test_completed_dates_scoped_to_requested_week_not_lifetime(client, auth_headers):
+    """completedDates is a week-table display convenience, not a second
+    source of truth for lifetime progress — confirms it only reflects the
+    requested Sunday-start week even though totalCompletions (unaffected)
+    keeps counting everything ever."""
+    habit_id = client.post("/habits", json={"label": "Journal", "frequency": "Daily"}, headers=auth_headers).json()["id"]
+
+    # 2026-08-02 is a Sunday; its week is 2026-08-02..2026-08-08.
+    for d in ["2026-08-02", "2026-08-05", "2026-08-10"]:  # last one falls in the *next* week
+        assert client.post(f"/habits/{habit_id}/completions?completion_date={d}", headers=auth_headers).status_code == 201
+
+    response = client.get(f"/habits?weekStart=2026-08-02", headers=auth_headers)
+    habit = next(h for h in response.json() if h["id"] == habit_id)
+    assert sorted(habit["completedDates"]) == ["2026-08-02", "2026-08-05"]
+    assert habit["totalCompletions"] == 3  # lifetime total is unaffected by the week scope
+
+
+def test_week_start_query_param_normalizes_to_containing_sunday(client, auth_headers):
+    """A client is never required to compute the exact Sunday itself —
+    passing any date inside the target week resolves to the same result,
+    so a frontend navigating by whole weeks can't drift off-boundary."""
+    habit_id = client.post("/habits", json={"label": "Journal", "frequency": "Daily"}, headers=auth_headers).json()["id"]
+    client.post(f"/habits/{habit_id}/completions?completion_date=2026-08-05", headers=auth_headers)
+
+    # 2026-08-02 (Sun) through 2026-08-05 (Wed) are all in the same week.
+    for query_date in ["2026-08-02", "2026-08-04", "2026-08-05"]:
+        response = client.get(f"/habits?weekStart={query_date}", headers=auth_headers)
+        habit = next(h for h in response.json() if h["id"] == habit_id)
+        assert habit["completedDates"] == ["2026-08-05"]
+
+
+def test_marking_complete_defaults_response_week_to_the_completed_dates_own_week(client, auth_headers):
+    """When a client doesn't pass weekStart explicitly on the mutation
+    itself, the immediate response should reflect the week the toggled
+    date belongs to (not necessarily 'today's week') — otherwise a
+    frontend toggling a past week's cell would get back a response that
+    looks like nothing happened."""
+    habit_id = client.post("/habits", json={"label": "Journal", "frequency": "Daily"}, headers=auth_headers).json()["id"]
+    response = client.post(f"/habits/{habit_id}/completions?completion_date=2026-08-05", headers=auth_headers)
+    assert response.json()["completedDates"] == ["2026-08-05"]

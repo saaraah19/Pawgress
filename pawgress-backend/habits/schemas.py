@@ -51,10 +51,19 @@ class HabitResponse(BaseModel):
     # a plain lifetime count that only ever grows.
     totalCompletions: int
     completedToday: bool
+    # Dates (ISO, within the requested week only — NOT lifetime) that have
+    # a completion, added for the week-table UX. Deliberately scoped to one
+    # week per response rather than returning full history — this is a
+    # display convenience for "which of these 7 cells are checked," not a
+    # new durable concept; the accumulating total above remains the only
+    # lifetime signal. See habits/routes.py's week-scoping helper.
+    completedDates: list[date_type]
     createdAt: datetime
 
     @classmethod
-    def from_model(cls, habit, total_completions: int, completed_today: bool) -> "HabitResponse":
+    def from_model(
+        cls, habit, total_completions: int, completed_today: bool, completed_dates: list[date_type]
+    ) -> "HabitResponse":
         return cls(
             id=habit.id,
             label=habit.label,
@@ -63,5 +72,6 @@ class HabitResponse(BaseModel):
             goalId=habit.goal_id,
             totalCompletions=total_completions,
             completedToday=completed_today,
+            completedDates=completed_dates,
             createdAt=habit.created_at,
         )

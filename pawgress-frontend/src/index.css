@@ -988,10 +988,10 @@ button.link:disabled {
    ========================================================================== */
 
 .habits-card {
-  /* Unified with the other list-style pages — see .goals-card's comment
-     for the full reasoning (visual consistency pass, 2026-08-26). Was
-     560px. */
-  max-width: 620px;
+  /* Wider than the other list-style pages (was 620px) — a 7-day table
+     needs the room a flat list didn't (checklist/table redesign,
+     2026-09-13). */
+  max-width: 820px;
 }
 
 .habit-form {
@@ -1015,61 +1015,122 @@ button.link:disabled {
   padding: 0.55rem 1.2rem;
 }
 
-.habit-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.habit-row {
+/* Week navigation — plain text + link-style buttons, matching the rest
+   of the app's understated chrome. No "streak calendar" styling, no
+   color-coding of past weeks; every week looks like every other week. */
+.habit-week-nav {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  margin: var(--space-3) 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
 }
 
-.habit-toggle {
-  flex-shrink: 0;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 50%;
-  border: 1.5px solid var(--color-border-strong);
-  background: transparent;
-  color: var(--color-surface);
-  font-size: 0.85rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: background-color var(--duration-quick) var(--ease-quiet), border-color var(--duration-quick) var(--ease-quiet);
-}
-
-.habit-toggle.is-done {
-  background: var(--color-assistant);
-  border-color: var(--color-assistant);
-}
-
-.habit-toggle:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.habit-info {
-  flex: 1;
-  min-width: 0;
+.habit-week-label {
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 11rem;
+  justify-content: center;
+}
+
+/* Checklist table: habit names as rows, days of the week as columns
+   (checklist/table redesign, 2026-09-13 — replaces the old single-toggle
+   list). Horizontally scrollable on narrow viewports rather than
+   squeezing 7 columns unreadably small. */
+.habit-table-wrap {
+  overflow-x: auto;
+}
+
+.habit-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.habit-table th,
+.habit-table td {
+  padding: var(--space-2);
+  text-align: center;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.habit-table thead th {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.habit-table thead th.is-today {
+  color: var(--color-assistant);
+}
+
+.habit-day-weekday {
+  display: block;
+}
+
+.habit-day-number {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.habit-name-cell {
+  text-align: left;
+  min-width: 12rem;
+  max-width: 16rem;
+}
+
+.habit-name-cell .field-title {
+  display: block;
+  width: 100%;
+}
+
+.habit-name-cell .habit-meta {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.habit-name-cell .task-delete {
+  margin-top: 0.15rem;
 }
 
 .habit-meta {
   font-family: var(--font-mono);
   font-size: 0.76rem;
   color: var(--color-text-muted);
+}
+
+.habit-day-toggle {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: var(--radius-sm, 4px);
+  border: 1.5px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-surface);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--duration-quick) var(--ease-quiet), border-color var(--duration-quick) var(--ease-quiet);
+}
+
+.habit-day-toggle.is-done {
+  background: var(--color-assistant);
+  border-color: var(--color-assistant);
+}
+
+.habit-day-toggle:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+td.is-today {
+  background: color-mix(in srgb, var(--color-assistant) 6%, transparent);
 }
 
 /* ==========================================================================
