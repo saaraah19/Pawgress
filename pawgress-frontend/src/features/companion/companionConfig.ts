@@ -45,6 +45,26 @@ export const COMPANION_EXPRESSION_ASSETS: Record<CompanionExpressionKey, string>
 };
 
 /**
+ * Accessible name for CompanionCharacter's `role="img"` wrapper. Keyed off
+ * the *expression* actually on screen, not off mood — a screen-reader user
+ * gets exactly what a sighted user gets from the image, no more, no less.
+ * This is also why the Wistful mood tier never needed its own label: it
+ * only ever selects existing calm/sleepy expressions, so its accessible
+ * name is indistinguishable from an ordinary calm/sleepy moment under any
+ * other mood — consistent with "no copy anywhere references this state"
+ * (mood_calculator.py's WISTFUL docstring).
+ */
+export const COMPANION_EXPRESSION_LABELS: Record<CompanionExpressionKey, string> = {
+  calm: "Your companion, sitting calmly",
+  curious: "Your companion, looking curious",
+  affectionate: "Your companion, looking affectionate",
+  sleepy: "Your companion, looking sleepy",
+  playful: "Your companion, in a playful mood",
+  mischievous: "Your companion, looking a little mischievous",
+  sleeping: "Your companion, asleep",
+};
+
+/**
  * Layer B (useCompanionBehavior) — weighted, not a lookup table. Mood shifts
  * probability, it never excludes an option outright, per
  * companion-character-spec.md §5.B. `sleeping` is deliberately present ONLY
@@ -63,6 +83,18 @@ export const COMPANION_EXPRESSION_WEIGHTS: Record<
   Neutral: { calm: 35, curious: 10, affectionate: 5, sleepy: 25, playful: 5, mischievous: 15, sleeping: 5 },
   Attentive: { calm: 20, curious: 45, affectionate: 5, sleepy: 5, playful: 15, mischievous: 10 },
   Content: { calm: 15, curious: 5, affectionate: 40, sleepy: 5, playful: 30, mischievous: 5 },
+  /**
+   * Wistful — a deliberate, narrow exception (see mood_calculator.py's enum
+   * docstring on the backend for the full reasoning). Reuses the existing
+   * `sleepy` and `calm` art rather than a new "sad" asset — no new asset
+   * commissioned for this tier yet. Heavily weighted toward low-energy
+   * expressions; `playful`/`mischievous`/`affectionate` are intentionally
+   * absent rather than merely low-weighted, so this tier reads as "a little
+   * low," not just "a bit less playful than usual." No `sleeping` pose here
+   * on purpose — sleeping is Neutral's ordinary personality trait, not a
+   * stand-in for this mood.
+   */
+  Wistful: { calm: 40, sleepy: 60 },
 };
 
 /**

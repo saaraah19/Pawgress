@@ -489,20 +489,21 @@ button.link:disabled {
   margin: 0 auto;
 }
 
-/* First Capture empty-state companion treatment (companion-character-
-   spec.md §4.3, approved 2026-08-09, built 2026-08-26). Deliberately
-   static — no animation, no independent behavior instance (see
-   CapturePage.tsx's comment on why not a second live CompanionCharacter)
-   — sitting calmly above the input with generous breathing room, not
-   boxed or bordered, so it reads as ambient presence rather than a UI
-   element competing with the capture form for attention. No text, no
-   instruction, no reward framing — the cat is simply there. */
-.capture-waiting-companion {
-  display: block;
-  width: 88px;
-  height: 88px;
+/* Companion, relocated here from the app-wide header (2026-09-11
+   positioning slice) — "near the task list, not the header," per the
+   owner's explicit decision. This is now the sole CompanionCharacter
+   instance in the app, always present above the list, list empty or not
+   — generous breathing room, not boxed or bordered, so it reads as
+   ambient presence rather than a UI element competing with the task list
+   for attention. No text, no instruction, no reward framing — the cat is
+   simply there. (Supersedes the old empty-state-only
+   .capture-waiting-companion treatment, which mounted a second, static
+   companion image specifically to avoid two independently-animating
+   instances on screen at once — moot now that there's only ever one.) */
+.task-list-companion {
+  display: flex;
+  justify-content: center;
   margin: 0 auto var(--space-5);
-  object-fit: contain;
 }
 
 .capture-form {

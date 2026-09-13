@@ -1,39 +1,20 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
-import { createCapture, listTasks } from "../../api/client";
+import { createCapture } from "../../api/client";
 import { CaptureForm } from "./CaptureForm";
 import { CaptureResult } from "./CaptureResult";
 import { TaskList } from "../tasks/TaskList";
 import { TASKS_QUERY_KEY } from "../../shared/queryKeys";
-import { useCompanionReaction } from "../companion/CompanionReactionContext";
-import { COMPANION_EXPRESSION_ASSETS } from "../companion/companionConfig";
+import { CompanionCharacter, type CompanionCharacterHandle } from "../companion/CompanionCharacter";
 import type { CaptureResult as CaptureResultType } from "../../shared/types";
 
 export function CapturePage() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
-  const { reactToCapture } = useCompanionReaction();
+  const companionRef = useRef<CompanionCharacterHandle>(null);
   const [result, setResult] = useState<CaptureResultType | null>(null);
   const [formKey, setFormKey] = useState(0);
-
-  // Shares the same cache TaskList already populates (TASKS_QUERY_KEY) —
-  // this doesn't cause a second network request, just reads the cached
-  // result to decide whether to show the "cat waiting beside input"
-  // treatment below (companion-character-spec.md §4.3's approved empty
-  // state, PROGRESS.md: "passive, ambient, Idle pose, no copy, no reward
-  // framing"). Keyed off "the list is currently empty," not off any
-  // "is this a brand-new account" flag — deliberately, since the product
-  // never distinguishes a first-time empty state from a returned-to-zero
-  // one (UX Philosophy §5.5, Return-After-Absence gets zero special
-  // treatment); the same calm, non-judgmental presence is appropriate
-  // either way.
-  const tasksQuery = useQuery({
-    queryKey: TASKS_QUERY_KEY,
-    queryFn: () => listTasks(token!),
-    enabled: !!token,
-  });
-  const showWaitingCompanion = tasksQuery.data?.length === 0 && !result;
 
   const mutation = useMutation({
     mutationFn: (rawText: string) => createCapture(rawText, token!),
@@ -43,8 +24,10 @@ export function CapturePage() {
       // Layer D — companion-character-spec.md §5.D: capture is one of the
       // two allowed contextual reaction triggers. Fires regardless of
       // whether tasks were extracted (a zero-task capture is still a
-      // genuine, successful moment of being heard).
-      reactToCapture();
+      // genuine, successful moment of being heard). Called directly on the
+      // locally-owned ref now that this page owns the sole companion
+      // instance — no more cross-tree context bridge needed for this.
+      companionRef.current?.reactToCapture();
       await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
 
       // Quiet Correction (UX Philosophy §5.2) is arguably as important as
@@ -71,23 +54,6 @@ export function CapturePage() {
       <div className="capture-card">
         <h1>Today</h1>
 
-        {showWaitingCompanion && (
-          // Deliberately a single static image, not a second live
-          // CompanionCharacter instance — the header already renders one
-          // independently-animating companion (its own random expression
-          // state); mounting a second would risk two visibly different
-          // expressions on screen at once, which reads as confusing
-          // ("two cats?") rather than as one calm presence. A plain,
-          // motionless image is also the more literal reading of
-          // "passive" than adding more independent animation.
-          <img
-            className="capture-waiting-companion"
-            src={COMPANION_EXPRESSION_ASSETS.calm}
-            alt=""
-            aria-hidden="true"
-          />
-        )}
-
         <CaptureForm
           key={formKey}
           onSubmit={(text) => mutation.mutate(text)}
@@ -111,6 +77,21 @@ export function CapturePage() {
       </div>
 
       <div className="task-list-section">
+        {/*
+          Relocated here from the app-wide header, per the owner's explicit
+          positioning decision — "near the task list, not the header." This
+          is now the ONLY CompanionCharacter instance in the whole app
+          (AppShell no longer mounts one), so the earlier two-live-instances
+          concern that shaped the old empty-state treatment no longer
+          applies — there's only ever one companion on screen anywhere,
+          full stop. It's always present here, list empty or not, which
+          also naturally covers what the old empty-state-only treatment
+          was reaching for (a calm presence rather than a blank box) without
+          needing a separate conditional image for it.
+        */}
+        <div className="task-list-companion">
+          <CompanionCharacter ref={companionRef} size={40} />
+        </div>
         <TaskList />
       </div>
     </div>

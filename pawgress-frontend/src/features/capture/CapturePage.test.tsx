@@ -6,32 +6,33 @@ import { ToastProvider } from "../../shared/ui/ToastProvider";
 import type { Task } from "../../shared/types";
 
 /**
- * Covers the First Capture empty-state companion treatment added
- * 2026-08-26 (companion-character-spec.md §4.3, approved 2026-08-09).
+ * Covers CapturePage's companion, relocated here from the app-wide header
+ * (2026-09-11 positioning slice — see docs/PROGRESS.md). This is now the
+ * ONLY CompanionCharacter instance in the whole app, always present near
+ * the task list regardless of whether the list is empty — it's no longer
+ * a special-cased empty-state-only treatment (the old
+ * `.capture-waiting-companion` static image and its `showWaitingCompanion`
+ * conditional no longer exist).
+ *
  * Mocks the API client and auth context rather than exercising real
  * network calls — this is a UI-conditional-rendering test, not an
  * integration test; the underlying query/mutation behavior already has
- * its own coverage elsewhere (backend tests, and the existing manual
- * verification history for capture/task flows).
+ * its own coverage elsewhere (backend tests, useCompanionBehavior.test.ts
+ * for the mood/expression logic itself).
  *
- * Queries the companion image via a plain CSS class selector, not
- * getByRole("img") — the image deliberately uses alt="" (correct for a
- * purely decorative element per WAI-ARIA), which means the browser
- * assigns it role="presentation", not role="img". getByRole("img") can
- * never match it regardless of the `hidden` option; a CSS selector is
- * the accurate way to assert on an intentionally non-semantic image.
+ * Queries the companion via its accessible name (role="img" + aria-label,
+ * added in the same slice) rather than a CSS class — this doubles as a
+ * regression guard for the accessibility fix itself: if the accessible
+ * name ever silently disappears, these tests fail along with it.
  */
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ token: "fake-token", userId: "user-1", isAuthenticated: true, logout: vi.fn() }),
 }));
 
-vi.mock("../companion/CompanionReactionContext", () => ({
-  useCompanionReaction: () => ({ reactToCapture: vi.fn() }),
-}));
-
 const mockListTasks = vi.fn<() => Promise<Task[]>>();
 const mockListGoals = vi.fn(async () => []);
+const mockGetCompanionState = vi.fn(async () => ({ mood: "Neutral" as const }));
 
 vi.mock("../../api/client", async () => {
   const actual = await vi.importActual<typeof import("../../api/client")>("../../api/client");
@@ -40,6 +41,7 @@ vi.mock("../../api/client", async () => {
     listTasks: () => mockListTasks(),
     listGoals: () => mockListGoals(),
     createCapture: vi.fn(),
+    getCompanionState: () => mockGetCompanionState(),
   };
 });
 
@@ -54,26 +56,22 @@ function renderCapturePage() {
   );
 }
 
-function findWaitingCompanion(container: HTMLElement): HTMLImageElement | null {
-  return container.querySelector(".capture-waiting-companion");
-}
-
-describe("CapturePage — First Capture empty-state companion", () => {
+describe("CapturePage — companion presence near the task list", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
   });
 
-  it("shows the waiting companion image when the task list is empty", async () => {
+  it("shows the companion (by its accessible name) once mood has loaded, even with an empty task list", async () => {
     mockListTasks.mockResolvedValue([]);
-    const { container } = renderCapturePage();
+    renderCapturePage();
 
     await waitFor(() => {
-      expect(findWaitingCompanion(container)).not.toBeNull();
+      expect(screen.getByRole("img", { name: /your companion/i })).not.toBeNull();
     });
   });
 
-  it("does not show the waiting companion once at least one task exists", async () => {
+  it("still shows the companion once at least one task exists — presence is no longer empty-state-only", async () => {
     mockListTasks.mockResolvedValue([
       {
         id: "task-1",
@@ -87,24 +85,24 @@ describe("CapturePage — First Capture empty-state companion", () => {
         createdAt: "2026-01-01T00:00:00Z",
       },
     ]);
-    const { container } = renderCapturePage();
+    renderCapturePage();
 
     // Wait for the tasks query to resolve (the task row's title input
-    // appearing is proof of that) before asserting the companion image
-    // is absent. Task titles render as an editable <input value=...>
-    // (TaskRow.tsx), not plain text, so this needs findByDisplayValue,
-    // not findByText.
+    // appearing is proof of that). Task titles render as an editable
+    // <input value=...> (TaskRow.tsx), not plain text, so this needs
+    // findByDisplayValue, not findByText.
     await screen.findByDisplayValue("Buy milk");
-    expect(findWaitingCompanion(container)).toBeNull();
+    expect(screen.getByRole("img", { name: /your companion/i })).not.toBeNull();
   });
 
-  it("does not show the waiting companion while the tasks query is still loading", () => {
-    mockListTasks.mockReturnValue(new Promise(() => {})); // never resolves
-    const { container } = renderCapturePage();
+  it("renders nothing for the companion until its own mood query resolves", () => {
+    mockListTasks.mockResolvedValue([]);
+    mockGetCompanionState.mockReturnValue(new Promise(() => {})); // never resolves
+    renderCapturePage();
 
-    // Undefined query data (still loading) must not be mistaken for an
-    // empty list — the condition explicitly checks tasksQuery.data, not
-    // just "no tasks visible yet."
-    expect(findWaitingCompanion(container)).toBeNull();
+    // Silent while loading is the intended behavior (Blueprint §4 — a
+    // loading spinner for a peripheral element would give it more visual
+    // weight than it's supposed to have), not an accident to work around.
+    expect(screen.queryByRole("img", { name: /your companion/i })).toBeNull();
   });
 });

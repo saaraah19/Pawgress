@@ -1,6 +1,176 @@
 # Pawgress — Project Progress
 
-**Last updated:** 2026-08-26, visual consistency pass — done.
+**Last updated:** 2026-09-11, Companion repositioning — done, not yet fully verified (see below).
+
+---
+
+## Just Completed: Companion Repositioned From Header to Task List (2026-09-11)
+
+Doc 13 §16/§35's "Task 1" (Cat positioning/status). Inspected the existing
+implementation before changing anything, per that document's own
+instruction, rather than assuming.
+
+**What was found:**
+- The companion was a single global instance mounted in `AppShell.tsx`'s
+  header, present on every page. No separate "status" existed beyond the
+  face itself — the old `CompanionIndicator` (glyph + text-status
+  component) was confirmed dead code, not imported anywhere, despite an
+  earlier PROGRESS.md entry already claiming it "no longer exists." It was
+  removed in the previous slice (Wistful mood tier) since it would have
+  failed to type-check once `CatMoodState` widened.
+- **Real accessibility gap:** `CompanionCharacter`'s wrapping element had
+  no accessible name at all — both image layers are `aria-hidden`, and a
+  non-interactive `<span>`'s `title` attribute isn't reliably announced.
+  Fixed as part of this slice (see below), not deferred to the later
+  accessibility-audit phase, since it was directly touched by this work.
+
+**Decision made (owner explicitly deferred to "whatever's simplest," so
+one path was chosen rather than asked about further):** relocate the
+single companion instance from the header into the Daily View
+(`CapturePage.tsx`), near the task list — it is no longer rendered
+app-wide. This was chosen over keeping a header instance *and* adding a
+second one near the list, because this codebase had already reasoned
+through (and rejected) having two independently-animating instances on
+screen at once (the old empty-state treatment's comment explained this
+directly) — relocating avoids ever creating that situation, rather than
+needing to manage it.
+
+**What changed:**
+- `AppShell.tsx` — no longer renders `CompanionCharacter`; the
+  `CompanionReactionContext` bridge it used to wire up is gone too.
+- `CompanionReactionContext.tsx` — **deleted**. It existed solely to
+  bridge the header's companion ref to `CapturePage`'s capture-success
+  event across the route tree. Now that `CapturePage` owns the instance
+  directly, it calls `companionRef.current?.reactToCapture()` itself —
+  no bridge needed.
+- `CapturePage.tsx` — now owns the sole `CompanionCharacter` instance,
+  rendered above `TaskList`, always present (list empty or not). This
+  also **supersedes the old empty-state-only treatment**
+  (`showWaitingCompanion`, the static `.capture-waiting-companion` image)
+  — since there's now only ever one live instance in the whole app, the
+  reason that treatment existed (avoiding a second live instance during
+  the empty state) no longer applies. One always-present companion covers
+  both "presence near the list" and "not a blank box when empty."
+- `CompanionCharacter.tsx` — wrapping element is now `role="img"` with a
+  real `aria-label` (`COMPANION_EXPRESSION_LABELS`, new in
+  `companionConfig.ts`), keyed off the *expression* on screen, not the
+  *mood* — deliberately, so Wistful never needed (and doesn't have) any
+  unique text: it only ever shows calm/sleepy expressions, so its
+  accessible name reads identically to an ordinary calm/sleepy moment
+  under any other mood. Consistent with "no copy anywhere references this
+  state."
+- CSS: `.capture-waiting-companion` replaced with `.task-list-companion`
+  (same visual spirit — generous breathing room, no border/box).
+- Tests: `CapturePage.test.tsx` rewritten to match — companion presence
+  is now asserted via its accessible name (`getByRole("img", { name: ... })`)
+  rather than a CSS class, and is tested as always-present rather than
+  empty-state-conditional. `useCompanionBehavior.test.ts` from the
+  previous slice is unaffected by this one.
+
+**Verification, and an honest limitation:**
+- `npx tsc -b --noEmit` — **ran for real, clean pass, no errors.**
+  `node_modules` happened to be included in the delivered zip, which
+  made this possible (unlike the backend, which has no vendored
+  dependencies in the zip).
+- **Could not actually run `vitest`** — it fails with a
+  `@rollup/rollup-linux-x64-gnu` native-binary error, a known npm
+  optional-dependency bug that happens when `node_modules` is installed
+  on one platform (this project's `node_modules` looks Windows-installed,
+  matching Sarah's known dev environment) and then used on another (this
+  sandbox is Linux). Not fixable here without network access to
+  reinstall. **Please run `npm test` locally and paste back any
+  failures**, particularly for the two companion test files touched
+  across this slice and the previous one.
+- Backend test suite still cannot be executed in this sandbox at all (no
+  network to install `requirements.txt`), same limitation as the
+  previous slice.
+
+**Still open / explicitly not addressed:**
+- "Status presentation" beyond the accessible-name fix — there's still no
+  *visible* text status anywhere (by design, matching the brand's "the
+  cat doesn't narrate itself" rule); if a visible indicator is wanted
+  later, that's a new, separate design decision, not something this
+  slice assumed.
+- Whether losing the companion from Goals/Journal/Habits/Calendar/Account
+  (it's now Daily-View-only) actually feels right in practice — worth a
+  real look once this is running, not just reasoned about in the
+  abstract.
+
+---
+
+---
+
+## Just Completed: Wistful Companion Mood Tier (2026-09-11)
+
+**A deliberate, explicit product decision, not a default that crept in:**
+Sarah decided she wants the companion able to look a little low when tasks
+have gone uncompleted for a while — the "do tasks, keep the cat happy"
+mechanic from the hackathon project she found — but scoped narrowly and
+kept simple, not the full needs/neglect system that project uses. This is
+a real, acknowledged exception to FR-6.2/Invariant 6 ("mood is never
+selected by an inactivity-only signal") — every other mood state still
+follows that rule exactly as before; only this one new state is allowed to
+break it, and only in the specific way described below.
+
+**What was built:**
+- New `Task.completed_at` column (nullable, additive migration
+  `ac59b87b6730`, chained after `cb200d229e68`/Calendar — **not yet applied
+  to any real database**, same as every other migration in this project;
+  Sarah is still deferring `stamp`+`upgrade` until the end).
+- `productivity/routes.py`'s `update_task`: sets `completed_at` on the
+  transition into `Done`, clears it on the transition back to
+  `NotStarted` (undo).
+- `companion/mood_calculator.py`: new `WISTFUL` mood state, added
+  alongside Neutral/Attentive/Content. Triggered ONLY when (a) the user
+  has completed at least one task, ever, AND (b) 3+ days (provisional,
+  tunable `WISTFUL_THRESHOLD`) have passed since the most recent
+  completion. Recovery is immediate — completing any task today
+  (including an old one) counts as "activity today" via `completed_at`,
+  same-session, no ramp-up.
+- Frontend: `companionConfig.ts`'s `COMPANION_EXPRESSION_WEIGHTS` gets a
+  `Wistful` entry, deliberately narrow (`{ calm: 40, sleepy: 60 }` only —
+  no playful/affectionate/mischievous). No new art commissioned; reuses
+  the existing `sleepy`/`calm` assets. No copy anywhere references this
+  state (`CompanionIndicator`, the old glyph-copy component, was actually
+  dead code — not imported anywhere despite this file previously claiming
+  it "no longer exists" — removed as part of this slice since it would
+  otherwise fail to type-check against the widened `CatMoodState`).
+- Tests added on both sides: backend (`test_companion.py`) covers the
+  Wistful trigger, the "never completed anything" exclusion, the
+  just-under-threshold boundary, instant recovery via an *old* task's
+  completion, and undo clearing `completed_at`. Frontend
+  (`useCompanionBehavior.test.ts`) covers Wistful's weight table staying
+  narrow and the hook picking from it correctly.
+- Fixed proactively, not discovered the hard way: the SQLite
+  timezone-stripping issue this file already documented as a known bug
+  class (see below in this file) would have hit this exact code —
+  `completed_at` read back from the DB is normalized to timezone-aware
+  before comparison, so it behaves the same against SQLite tests and real
+  Postgres.
+
+**Explicitly NOT done, on purpose:**
+- No new art asset for an actual "sad" expression — reusing `sleepy`.
+  Revisit only if it doesn't read as intended once seen live.
+- No copy/text anywhere for this state.
+- Not triggered by captures or task creation — completions only,
+  deliberately, so brain-dumping into the inbox without finishing
+  anything can't keep the cat "happy."
+- **Could not run the actual test suites in this session** — the sandbox
+  used to build this slice has no network access to install
+  `requirements.txt`/npm packages, so this was verified by careful
+  reading and `py_compile` syntax checks only, not by executing
+  `pytest`/`vitest`. Run both locally before trusting this is fully
+  green.
+
+**Still open:**
+- The 3-day threshold and the exact `sleepy`-only art choice are both
+  explicitly provisional — easy to retune once it's actually visible in
+  the running app.
+- Same outstanding item as everything else in this file: none of this
+  reaches Sarah's real database until she runs `alembic stamp` +
+  `alembic upgrade head`.
+
+---
 
 This file is the single place to check "where are we right now" without
 re-deriving it from chat history. Updated at the end of every slice —
