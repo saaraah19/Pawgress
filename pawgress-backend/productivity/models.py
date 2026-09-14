@@ -154,6 +154,14 @@ class Task(Base):
     source_capture_id = Column(UUID(as_uuid=True), ForeignKey("captures.id"), nullable=True, index=True)
     goal_id = Column(UUID(as_uuid=True), ForeignKey("goals.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    # Wistful mood tier (companion/mood_calculator.py) — the ONLY consumer
+    # of this column. Set when status transitions to DONE, cleared back to
+    # None if un-completed (see productivity/routes.py's update_task) — it
+    # tracks the most recent actual completion EVENT, not "was this task
+    # ever completed," so undoing a completion honestly removes the signal
+    # rather than leaving a stale timestamp behind. Nullable: most tasks
+    # (not-yet-done, or never done) simply have no value here.
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class FieldCorrectionRecord(Base):

@@ -2,6 +2,12 @@
 #     of missing a prebuilt package for a newer Python version. ---
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
+# Required by FastAPI's UploadFile/File(...) form parsing — added for
+# voice capture's audio upload endpoint (productivity/routes.py's
+# transcribe_capture_audio). FastAPI raises a runtime error on that route
+# without this installed; it's not pulled in automatically by fastapi
+# itself. Pure Python, no compiled component.
+python-multipart==0.0.12
 sqlalchemy==2.0.36
 python-jose[cryptography]==3.3.0
 openai>=1.57.0,<2.0.0

@@ -64,6 +64,9 @@ export function LoginPage() {
           <span className="muted">New here? </span>
           <Link to="/register">Create an account</Link>
         </div>
+        <div className="switch-row">
+          <Link to="/forgot-password">Forgot your password?</Link>
+        </div>
       </div>
     </div>
   );

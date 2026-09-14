@@ -76,6 +76,48 @@ async function request<T>(
   return (await response.json()) as T;
 }
 
+/** Voice capture (2026-09-13). Separate from `request()` because a
+ * multipart file upload can't go through that helper — it always
+ * JSON-stringifies the body and sets Content-Type: application/json,
+ * which would send the audio as a broken payload. The browser sets the
+ * correct multipart boundary itself when given a FormData body, so
+ * Content-Type is deliberately NOT set here (setting it manually is a
+ * classic way to break the boundary parameter and corrupt the upload). */
+export async function transcribeAudio(audioBlob: Blob, token: string): Promise<{ text: string }> {
+  const formData = new FormData();
+  formData.append("file", audioBlob, "recording.webm");
+
+  const response = await fetch(`${API_BASE_URL}/captures/transcribe`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let detail = `Request failed (${response.status})`;
+    try {
+      const errorBody = await response.json();
+      if (typeof errorBody?.detail === "string") detail = errorBody.detail;
+    } catch {
+      // fall back to the generic message above
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  return (await response.json()) as { text: string };
+}
+
+export function requestPasswordReset(email: string): Promise<void> {
+  return request<void>("/auth/password-reset/request", { method: "POST", body: { email } });
+}
+
+export function confirmPasswordReset(tokenValue: string, newPassword: string): Promise<void> {
+  return request<void>("/auth/password-reset/confirm", {
+    method: "POST",
+    body: { token: tokenValue, new_password: newPassword },
+  });
+}
+
 export function register(email: string, password: string): Promise<AuthResponse> {
   return request<AuthResponse>("/auth/register", {
     method: "POST",
@@ -144,6 +186,14 @@ export function getCompanionState(token: string): Promise<CompanionState> {
 
 export function getProfile(token: string): Promise<Profile> {
   return request<Profile>("/auth/me", { token });
+}
+
+export function updateProfile(patch: { display_name: string | null }, token: string): Promise<Profile> {
+  return request<Profile>("/auth/me", { method: "PATCH", body: patch, token });
+}
+
+export function deleteAccount(token: string): Promise<void> {
+  return request<void>("/auth/me", { method: "DELETE", token });
 }
 
 export function createJournalEntry(payload: JournalEntryCreateRequest, token: string): Promise<JournalEntry> {

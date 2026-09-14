@@ -234,6 +234,68 @@ a {
   box-shadow: 0 0 0 3px var(--color-assistant-tint);
 }
 
+/* Account deletion (2026-09-13) — deliberately NOT red. This file's own
+   design-tokens comment states red is "structurally absent... not
+   implemented at all" (Blueprint §14). Seriousness is conveyed through
+   weight, a top border setting the zone apart, and a confirmation step —
+   not color — so this stays consistent with that rule rather than
+   quietly reversing it for one button. */
+.danger-zone {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.danger-zone h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-2);
+  color: var(--color-text);
+}
+
+.danger-link {
+  color: var(--color-text-muted);
+}
+
+.danger-zone-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 28rem;
+}
+
+.danger-zone-confirm p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.danger-zone-confirm label {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.danger-zone-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+button.danger {
+  background: var(--color-text);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.danger:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 button {
   font-family: inherit;
 }
@@ -394,25 +456,50 @@ button.link:disabled {
   color: var(--color-text);
 }
 
+/* Nav bar redesign, 2026-09-13 — previously `.app-nav a.link` only set a
+   font-size, so these were unstyled browser default anchors (blue,
+   underlined). Uses NavLink's automatic `.active` class + aria-current
+   for the current page, styled the same way as the established
+   view-toggle pill pattern elsewhere (Habits' Today/All-Tasks toggle)
+   rather than inventing a second "active state" visual language. */
 .app-nav {
   display: flex;
-  gap: var(--space-5);
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--color-bg);
+  border-radius: var(--radius-pill);
 }
 
-.app-nav a.link {
-  font-size: 0.92rem;
+.app-nav-link {
+  padding: 0.4rem 0.95rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color var(--duration-quick) var(--ease-quiet), background-color var(--duration-quick) var(--ease-quiet);
+}
+
+.app-nav-link:hover {
+  color: var(--color-text);
+}
+
+.app-nav-link.active {
+  background: var(--color-assistant);
+  color: var(--color-surface);
 }
 
 .app-main {
   padding: var(--space-6) var(--space-4) var(--space-8);
 }
 
-/* --- Cat Companion character (FR-6.1). Small, quiet, easy to miss if
-   you're not looking, per Brand §10's baseline-presence principle — real
-   production art (docs/companion-character-spec.md) replaces the placeholder
-   paw glyph here, but the header stays the same restrained scale. The cat
-   is presence, not progression; existing real art is not a license to make
-   it bigger or more central. ---
+/* --- Cat Companion character (FR-6.1). Real production art
+   (docs/companion-character-spec.md) replaces the placeholder paw glyph.
+   Sized larger in the Daily View than the original header placement was
+   (110px vs. the old 40px) per Sarah's direct call, 2026-09-13 — the cat
+   is still peripheral (no text, no instruction, no reward framing) but
+   was reading as too small to actually register as a presence. ---
 
    v1 asset constraint (spec §6): 7 flattened, whole-image transparent
    PNGs, no separated layers. That has two direct CSS consequences:
@@ -540,6 +627,48 @@ button.link:disabled {
 .capture-form button.primary {
   align-self: flex-start;
   padding: 0.75rem 1.75rem;
+}
+
+/* Voice capture (2026-09-13) */
+.capture-form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.mic-button {
+  flex-shrink: 0;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border-strong);
+  background: var(--color-surface);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color var(--duration-quick) var(--ease-quiet), border-color var(--duration-quick) var(--ease-quiet);
+}
+
+.mic-button:hover:not(:disabled) {
+  border-color: var(--color-assistant);
+}
+
+.mic-button.is-recording {
+  background: var(--color-assistant);
+  border-color: var(--color-assistant);
+  color: var(--color-surface);
+}
+
+.mic-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.capture-voice-status {
+  margin: 0;
+  min-height: 1.1rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
 }
 
 .capture-result {
@@ -672,7 +801,13 @@ button.link:disabled {
 
 .task-row-editable {
   display: grid;
-  grid-template-columns: 22px minmax(140px, 1fr) 120px 100px 96px;
+  /* Was 5 tracks (checkbox/title/category/priority/estimate) for what is
+     now 7 rendered children once the goal select and delete button are
+     counted — the missing 2 tracks meant those items fell onto an
+     implicit second row and were squeezed into the 22px checkbox column,
+     wrapping one word per line (the "prepare / for / AWS / Exam" bug).
+     Fixed by declaring all 7 tracks explicitly. */
+  grid-template-columns: 22px minmax(140px, 1fr) 120px 100px 96px 130px 64px;
   align-items: center;
   gap: var(--space-2) var(--space-3);
 }
@@ -754,16 +889,10 @@ button.link:disabled {
   color: var(--color-text-muted);
 }
 
-.field-goal-group {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.goal-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  justify-content: flex-end;
+.field-goal {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
 }
 
 .task-delete {
@@ -874,6 +1003,15 @@ button.link:disabled {
   margin-top: var(--space-2);
 }
 
+/* Indent driven by a CSS custom property (set inline per-node in
+   GoalNode.tsx) rather than a literal inline margin — a literal inline
+   style value can't be overridden by any stylesheet rule, including one
+   marked !important, which is exactly what a per-viewport indent
+   adjustment needs to do (see the mobile breakpoint below). */
+.goal-node {
+  margin-left: calc(var(--goal-depth, 0) * 20px);
+}
+
 .goal-node-row {
   display: flex;
   align-items: center;
@@ -923,6 +1061,53 @@ button.link:disabled {
   margin: var(--space-7) auto 0;
 }
 
+/* Day filter chips + day headings (2026-09-13 redesign — replaces one
+   long undifferentiated scroll with a heading per day and a way to jump
+   straight to one). Deliberately plain: no streak-style styling, no
+   color-coding of "active" days vs. "empty" days since empty days simply
+   don't produce a chip at all — there's nothing to compare against. */
+.journal-day-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.journal-day-chip {
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background-color var(--duration-quick) var(--ease-quiet), color var(--duration-quick) var(--ease-quiet), border-color var(--duration-quick) var(--ease-quiet);
+}
+
+.journal-day-chip:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.journal-day-chip.is-active {
+  background: var(--color-assistant);
+  border-color: var(--color-assistant);
+  color: var(--color-surface);
+}
+
+.journal-day-group + .journal-day-group {
+  margin-top: var(--space-6);
+}
+
+.journal-day-heading {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
 .journal-entry-list {
   list-style: none;
   margin: 0;
@@ -939,12 +1124,11 @@ button.link:disabled {
   border-radius: var(--radius-md);
 }
 
-.journal-entry-date {
+.journal-entry-time {
   margin: 0 0 var(--space-2);
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
@@ -1267,11 +1451,30 @@ td.is-today {
 
 @media (max-width: 640px) {
   .app-header {
+    flex-wrap: wrap;
     padding: var(--space-3) var(--space-4);
   }
 
+  .app-header-brand {
+    order: 1;
+  }
+
+  .app-header > button.link {
+    order: 2;
+  }
+
+  /* Nav bar audit, 2026-09-13: 6 pills + brand + logout in one
+     non-wrapping flex row would overflow on a phone-width screen. Wrapping
+     the header into two rows (brand+logout, then nav full-width) and
+     letting the nav scroll horizontally if it's ever still too wide
+     (more items added later) keeps every item reachable without
+     shrinking text to the point of being unreadable. */
   .app-nav {
-    gap: var(--space-3);
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    gap: var(--space-2);
   }
 
   .task-row-editable {
@@ -1282,14 +1485,21 @@ td.is-today {
   .task-row-editable .field-category,
   .task-row-editable .field-priority,
   .task-row-editable .field-estimate-group,
-  .task-row-editable .field-goal-group,
+  .task-row-editable .field-goal,
   .task-row-editable .task-delete {
     grid-column: 2;
     justify-self: start;
   }
 
-  .field-estimate-group,
-  .field-goal-group {
+  .field-estimate-group {
     justify-content: flex-start;
+  }
+
+  /* Goal hierarchy audit: 20px/depth was reasonable on desktop but eats
+     real space on a narrow screen at 3+ levels deep (Annual -> Quarterly
+     -> Project -> Milestone). Halving it keeps the nesting legible
+     without the row content getting squeezed. */
+  .goal-node {
+    margin-left: calc(var(--goal-depth, 0) * 10px);
   }
 }

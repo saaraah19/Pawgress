@@ -1,6 +1,103 @@
 # Pawgress — Project Progress
 
-**Last updated:** 2026-09-11, Companion repositioning — done, not yet fully verified (see below).
+**Last updated:** 2026-09-13, Solidification pass — all 6 priorities
+built (Wistful rebuild, Identity/AI-Inbox test coverage, account
+management, mobile/a11y fixes, voice capture, security pass). Real test
+suite runs and an email-provider decision are still owed by Sarah — see
+below.
+
+---
+
+## In Progress: Solidification Pass (2026-09-13)
+
+Following a full audit against the foundational docs + actual code (not
+just re-reading the docs), six priorities were identified and approved by
+Sarah, to be built in order without stopping for sign-off except where a
+schema/DB/security decision requires it (per standing collaboration rule).
+
+- [x] **1. Close loose ends:**
+  - [x] Wistful mood tier's backend rebuilt for real this time — new
+    `WISTFUL` enum value, `Task.completed_at` column, migration
+    `ac59b87b6730`. Sarah explicitly approved a new dev-environment
+    migration for this (asked directly since it's a schema change).
+  - [x] `CompanionIndicator.tsx` / `CompanionReactionContext.tsx` actually
+    deleted this time — confirmed unreferenced (comments only), and this
+    is the *third* time this repo has claimed this dead code was removed
+    (see the 2026-09-11 entry below, which itself said it was already
+    removed once before that). Worth a moment's pause: PROGRESS.md
+    entries claiming something is done are not the same as it being done
+    — verify on disk, not from the log.
+  - [ ] Real `pytest`/`npm test` runs — still can't be done from this
+    sandbox (no vendored deps / rollup native-binary mismatch, same as
+    every prior slice). **Sarah needs to run these herself** — this is
+    now more important than ever, given how much new backend surface
+    area this pass added (5 new test files, ~2 new endpoints' worth of
+    routes, a rewritten mood calculator).
+- [x] **2. Backfilled tests for Identity + AI Inbox** — `test_identity.py`
+  (register/login/me — previously zero coverage) and
+  `test_capture_extraction.py` (the extraction endpoint itself —
+  previously only its cost-logging side effect was tested, never
+  success/failure/schema-invalid/raw-text-preservation directly).
+- [x] **3. Minimal account-management floor** — `PATCH /auth/me` (display
+  name) and `DELETE /auth/me` (real self-service account deletion,
+  `identity/account_deletion_service.py`). **Caught a real bug while
+  building this**: the first draft deleted Goals before Habits, which
+  would throw a foreign-key violation on real Postgres for any
+  goal-linked habit (invisible on SQLite, which doesn't enforce FK
+  constraints by default) — fixed, and a regression test added
+  specifically for it. This is exactly the kind of bug that only a
+  Postgres-backed test run would have caught on its own; SQLite gave a
+  false pass.
+- [x] **4. Mobile + accessibility audit** — found and fixed a real nav-bar
+  overflow bug (6 nav pills + brand + logout in one non-wrapping flex row
+  would overflow on a phone), and a goal-hierarchy indentation bug of my
+  own making mid-fix (an inline `style` marginLeft can't be overridden by
+  any stylesheet rule including `!important` — switched to a CSS custom
+  property so the mobile breakpoint can actually take effect). Confirmed,
+  not just assumed: no div/span click handlers are missing keyboard
+  support (everything's already real buttons/anchors), and the companion
+  character's `<img>` tags already had correct alt/aria handling. **Not**
+  independently verified: real device testing, contrast ratios, or
+  screen-reader testing — none of which are things this sandbox can do.
+- [x] **5. Voice capture — built for real, not stubbed.** New
+  `POST /captures/transcribe` endpoint (Groq Whisper via the existing
+  Model Provider abstraction — `transcribe_audio` added alongside
+  `extract_tasks`), a mic button in the capture form using the browser's
+  MediaRecorder API, graceful degradation if the browser doesn't support
+  it. Deliberately does NOT auto-submit a capture from a transcript — it
+  drops the text into the same textarea a typed capture would use, so a
+  misheard word is exactly as cheap to fix as a typo (UX Philosophy
+  §5.2's Quiet Correction philosophy, extended to transcription). Needs
+  `pip install -r requirements.txt` re-run — added `python-multipart`,
+  required for FastAPI's file-upload handling and not previously present.
+- [x] **6. Pre-deployment security pass:**
+  - [x] Rate limiting on register/login/password-reset-request — plain
+    in-memory fixed-window limiter (`shared/rate_limit.py`), no new
+    dependency, single-instance-only by design (documented revisit
+    trigger: whenever this app actually gets horizontally scaled, this
+    needs to move to something shared like Redis).
+  - [x] Password-reset flow, backend + frontend, end to end — but
+    **real email delivery is NOT wired up**. `identity/password_reset.py`
+    logs the reset link instead of emailing it; the flow is fully
+    testable and the seam for a real provider is clearly marked, but
+    **Sarah needs to pick a provider (SendGrid/Postmark/SES/plain SMTP)
+    and add credentials as env vars** — that choice isn't mine to make or
+    guess at.
+  - [x] JWT secret/expiry reviewed — already fails loudly at startup if
+    unset (good, no change needed); 7-day access token expiry is a
+    reasonable, already-considered choice. **Confirmed, not fixed**: the
+    System Architecture doc describes a short-lived-access +
+    refresh-token pattern, but only a single long-lived access token is
+    actually implemented — noted in the password-reset code as a real
+    gap (a password reset doesn't invalidate existing tokens), not
+    something this pass closed.
+
+**What Sarah needs to do before this pass is actually "done," not just
+"built":** run the real test suites (backend + frontend), re-run
+`pip install -r requirements.txt` (new dependency), decide on an email
+provider for password reset, and — ideally — run the test suite against
+real Postgres at least once given the FK-ordering bug this pass already
+caught once on the *first* multi-table deletion path built.
 
 ---
 

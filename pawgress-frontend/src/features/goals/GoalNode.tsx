@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import type { Goal, GoalTier, GoalUpdateRequest } from "../../shared/types";
 import { GOAL_TIERS } from "../../shared/types";
 import { eligibleParents } from "./goalHierarchy";
@@ -29,7 +29,7 @@ export function GoalNode({ node, allGoals, depth, onUpdate, onDelete, savingId, 
   const candidates = eligibleParents(goal, allGoals);
 
   return (
-    <li className="goal-node" style={{ marginLeft: depth * 20 }}>
+    <li className="goal-node" style={{ "--goal-depth": depth } as CSSProperties}>
       <div className="goal-node-row">
         <span className="goal-tier-badge">{goal.tier}</span>
         <span className="task-title">{goal.label}</span>

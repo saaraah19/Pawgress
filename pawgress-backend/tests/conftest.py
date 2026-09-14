@@ -29,9 +29,27 @@ from sqlalchemy.orm import sessionmaker
 
 from shared.database import Base, get_db
 from shared.config import settings
+from shared.rate_limit import login_rate_limiter, register_rate_limiter, password_reset_rate_limiter
 import identity.models  # noqa: F401 — registers User on Base.metadata
 import productivity.models  # noqa: F401 — registers Task/Goal/Capture/etc.
 import main as main_module
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiters():
+    """The rate limiters added 2026-09-13 (shared/rate_limit.py) are
+    module-level singletons, and FastAPI's TestClient makes every request
+    in every test appear to come from the same client IP — without this,
+    the FIRST test file to run enough register/login calls would start
+    getting real 429s from the SECOND file's tests too, entirely by
+    accident, since they're not otherwise isolated from each other. This
+    autouse fixture makes each test start with a clean bucket regardless
+    of what ran before it, same as db_engine already does for the
+    database."""
+    login_rate_limiter.reset()
+    register_rate_limiter.reset()
+    password_reset_rate_limiter.reset()
+    yield
 
 
 @pytest.fixture()

@@ -10,13 +10,14 @@ parameter — never an afterthought filter.
 """
 
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 
 from shared.database import get_db
 from identity.auth import get_current_user
 from identity.models import User
-from productivity.models import Task, Goal, FieldCorrectionRecord, TaskOrigin, Priority, GoalTier
+from productivity.models import Task, Goal, FieldCorrectionRecord, TaskOrigin, TaskStatus, Priority, GoalTier
 from productivity.schemas import (
     CaptureRequest,
     CaptureResult,
@@ -64,6 +65,63 @@ def create_capture(
         tasks=[TaskResponse.from_model(t) for t in result.tasks],
         failureReason=result.failure_reason,
     )
+
+
+# Voice capture (2026-09-13) — a real, approved V2 feature (Engineering
+# Handover §4: "pulled forward from 'someday' to early Version 2... typing
+# a paragraph is still real friction against a 'just talk to it' pitch"),
+# not a stub. A generous but bounded upload size — short personal voice
+# notes, not long-form audio, so this is a cost/abuse guard (System
+# Architecture §17) matching CaptureRequest's own max_length reasoning,
+# not a product constraint anyone is expected to bump into normally.
+MAX_AUDIO_UPLOAD_BYTES = 15 * 1024 * 1024  # ~15MB, comfortably more than a few minutes of compressed speech
+
+
+@router.post("/captures/transcribe")
+async def transcribe_capture_audio(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Deliberately separate from POST /captures, not a variant of it — this
+    endpoint's ONLY job is turning audio into text and handing it back for
+    the user to see and edit, exactly like something they'd typed
+    themselves. It does NOT create a Capture or call extraction.
+
+    This split is a direct, deliberate response to MVP Definition §5's own
+    caution about voice: "it introduces transcription accuracy and latency
+    variables that would muddy the MVP's central test." Routing the
+    transcript back through the same textarea a typed capture would use
+    means a misheard word is exactly as cheap to fix as a typo would be —
+    UX Philosophy §5.2's Quiet Correction philosophy, extended to
+    transcription errors rather than just AI-extraction errors — and the
+    user, not this endpoint, decides when what's on screen is ready to
+    actually submit as a capture.
+    """
+    audio_bytes = await file.read()
+    if len(audio_bytes) > MAX_AUDIO_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="That recording is too long. Try a shorter note, or type it instead.",
+        )
+    if not audio_bytes:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No audio was received.")
+
+    provider = get_model_provider()
+    result = provider.transcribe_audio(audio_bytes, filename=file.filename or "recording.webm")
+
+    if result.outcome != "success":
+        # A controlled, honest failure — same philosophy as extraction's
+        # schema_invalid/provider_error handling (System Architecture §20):
+        # the user always has the manual fallback (just type it) sitting
+        # right there, so this never blocks capture, it just doesn't help
+        # this once.
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Couldn't transcribe that recording. You can type it instead.",
+        )
+
+    return {"text": result.text}
 
 
 @router.get("/tasks", response_model=list[TaskResponse])
@@ -173,6 +231,14 @@ def update_task(
             ))
 
         setattr(task, model_field, new_value)
+
+        # Wistful mood tier (companion/mood_calculator.py): track the most
+        # recent completion EVENT, not just current status. Un-completing
+        # honestly clears the signal rather than leaving a stale timestamp
+        # that would make an undone completion still count toward "not
+        # wistful" — completed_at means "completed," full stop.
+        if field_name == "status":
+            task.completed_at = datetime.now(timezone.utc) if new_value == TaskStatus.DONE.value else None
 
     db.commit()
     db.refresh(task)

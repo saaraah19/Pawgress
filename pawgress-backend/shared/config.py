@@ -66,6 +66,14 @@ class Settings:
     # Locked per the executed spike — see cost_model.md's decision banner and
     # ai_extraction/prompt.py for the exact system prompt this was validated against.
     extraction_model: str = "openai/gpt-oss-120b"
+    # Voice capture (2026-09-13) — Groq's OpenAI-compatible Whisper endpoint,
+    # same base_url/api_key as extraction. "turbo" chosen over the plain
+    # whisper-large-v3 for latency: a voice note is on the same "feels
+    # instant" expectation as typed capture (MVP Definition §2's promise
+    # isn't scoped to text specifically), and transcription accuracy for
+    # short personal voice notes doesn't need the larger model's marginal
+    # quality gain enough to justify roughly double the latency.
+    transcription_model: str = "whisper-large-v3-turbo"
 
     # --- CORS ---
     # Comma-separated list of allowed origins. Least-privilege (System

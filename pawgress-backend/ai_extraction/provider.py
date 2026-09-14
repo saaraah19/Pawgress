@@ -24,7 +24,7 @@ from openai import OpenAI
 from shared.config import settings
 from ai_extraction.prompt import SYSTEM_PROMPT
 from ai_extraction.schema import validate_extraction_response, SchemaValidationError, ExtractionResponse
-from ai_extraction.cost_logger import log_extraction_call
+from ai_extraction.cost_logger import log_extraction_call, log_transcription_call
 
 
 @dataclass
@@ -35,12 +35,24 @@ class ExtractionAttemptResult:
     error: Optional[str] = None
 
 
+@dataclass
+class TranscriptionAttemptResult:
+    outcome: str  # "success" | "provider_error"
+    text: Optional[str] = None
+    error: Optional[str] = None
+
+
 class ModelProvider:
-    """Interface every concrete provider implements. Only one method, because
-    that's the only thing the current use case needs — no speculative surface
-    area for capabilities (coaching, memory formation) that don't exist yet."""
+    """Interface every concrete provider implements. `transcribe_audio` was
+    added 2026-09-13 for voice capture — genuinely a second capability now
+    (not speculative surface area the "only one method" comment used to
+    warn against), since voice notes are an approved, real V2 feature
+    (Engineering Handover §4), not a hypothetical one."""
 
     def extract_tasks(self, raw_input: str) -> ExtractionAttemptResult:
+        raise NotImplementedError
+
+    def transcribe_audio(self, audio_bytes: bytes, filename: str) -> TranscriptionAttemptResult:
         raise NotImplementedError
 
 
@@ -125,6 +137,46 @@ class GroqModelProvider(ModelProvider):
                 continue  # transient network/provider error — worth one retry
 
         return ExtractionAttemptResult(outcome="provider_error", error=last_error)
+
+    def transcribe_audio(self, audio_bytes: bytes, filename: str) -> TranscriptionAttemptResult:
+        """Voice capture (2026-09-13). Single attempt, no retry — unlike
+        extract_tasks, a failed transcription has an immediate, obvious
+        fallback already sitting in front of the user (type it instead),
+        so the "worth a retry" cost/latency tradeoff that justifies
+        extract_tasks's bounded retry doesn't apply the same way here.
+        No schema validation step either: Whisper's response is a plain
+        transcript string, not structured data with a shape that can be
+        "invalid" the way extraction's JSON contract can be."""
+        start = time.monotonic()
+        try:
+            response = self._client.audio.transcriptions.create(
+                model=settings.transcription_model,
+                file=(filename, audio_bytes),
+                timeout=30.0,
+            )
+            latency_ms = (time.monotonic() - start) * 1000
+            text = getattr(response, "text", None)
+            if not text or not text.strip():
+                # An empty transcript (silence, or a recording that didn't
+                # capture speech) is not a provider error — it's a valid,
+                # if unhelpful, outcome. Surfaced as success with empty
+                # text; the frontend decides how to present "nothing was
+                # heard," not this layer.
+                log_transcription_call(
+                    model=settings.transcription_model, outcome="success", latency_ms=latency_ms, audio_seconds=None
+                )
+                return TranscriptionAttemptResult(outcome="success", text="")
+
+            log_transcription_call(
+                model=settings.transcription_model, outcome="success", latency_ms=latency_ms, audio_seconds=None
+            )
+            return TranscriptionAttemptResult(outcome="success", text=text.strip())
+        except Exception as e:
+            latency_ms = (time.monotonic() - start) * 1000
+            log_transcription_call(
+                model=settings.transcription_model, outcome="provider_error", latency_ms=latency_ms, audio_seconds=None
+            )
+            return TranscriptionAttemptResult(outcome="provider_error", error=str(e))
 
 
 def get_model_provider() -> ModelProvider:

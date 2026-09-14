@@ -25,8 +25,9 @@ tradeoffs.
 """
 
 import enum
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from productivity.models import Task, Capture
@@ -39,11 +40,26 @@ class CatMoodState(str, enum.Enum):
     the model must be a minimal current-value abstraction, not a hidden
     scoring system). The exact states, count, and trigger logic remain a
     UX-phase decision (A5 is still only partially resolved) — this is a
-    reasonable, defensible first implementation, not treated as final."""
+    reasonable, defensible first implementation, not treated as final.
+
+    WISTFUL — added 2026-09, a deliberate, narrow, scoped EXCEPTION to
+    this file's own governing rule below (see calculate_mood's docstring
+    for why it doesn't violate FR-6.2's spirit despite being duration-
+    based). Reuses existing calm/sleepy expression assets on the frontend
+    (no new art), carries no unique copy anywhere in the product, and
+    recovers silently and instantly on the next completion."""
 
     NEUTRAL = "Neutral"
     ATTENTIVE = "Attentive"
     CONTENT = "Content"
+    WISTFUL = "Wistful"
+
+
+# Provisional, explicitly tunable — Sarah may want to retune this after
+# seeing it live (carried forward from the original design conversation).
+# A single named constant here means that's a one-line change, not a hunt
+# through the function body.
+WISTFUL_THRESHOLD_DAYS = 3
 
 
 def calculate_mood(db: Session, user_id) -> CatMoodState:
@@ -72,6 +88,31 @@ def calculate_mood(db: Session, user_id) -> CatMoodState:
     by not computing a duration in the first place, not just by not
     displaying one.
 
+    WISTFUL is the one deliberate, scoped exception to the paragraph above,
+    approved directly (not something this file decided on its own). It IS a
+    duration comparison — "has it been a few days since the last
+    completion" — but differs from the inactivity-shaming pattern FR-6.2
+    bans in every way that matters:
+      - Scoped to completions specifically, not general inactivity — a user
+        who's capturing and creating tasks but not finishing them is a
+        different, narrower signal than "hasn't opened the app."
+      - Requires having completed at least one task EVER first — a brand-
+        new user is never shown as wistful; there's nothing to recover from
+        on day one.
+      - No new "sad" art — reuses the existing calm/sleepy expression
+        weighting (companionConfig.ts), the same visual vocabulary already
+        used for ordinary low-key moments, not a punishment-coded state.
+      - No unique copy anywhere — the accessible name is keyed to
+        expression (calm/sleepy), never to "wistful," so it's invisible in
+        every text surface (screen readers included).
+      - Recovers instantly and silently on the very next completion — no
+        multi-day "cooldown," no gradual recovery arc. One completion, and
+        it's simply CONTENT again, same as any other day with activity.
+    This is a coarse boolean ("more than N days since last completion, yes
+    or no") in the same spirit as ATTENTIVE/CONTENT's ever/today booleans —
+    not a continuum, not a score, not something that gets "worse" the
+    longer it's true.
+
     "Today" is a UTC calendar-day boundary — a simplification worth naming:
     it doesn't respect the user's local timezone, so a user just past
     midnight UTC could see ATTENTIVE despite having been active minutes ago
@@ -87,6 +128,17 @@ def calculate_mood(db: Session, user_id) -> CatMoodState:
     )
     if not has_activity_ever:
         return CatMoodState.NEUTRAL
+
+    has_completed_ever = (
+        db.query(Task.id).filter(Task.user_id == user_id, Task.completed_at.isnot(None)).first() is not None
+    )
+    if has_completed_ever:
+        most_recent_completion = (
+            db.query(func.max(Task.completed_at)).filter(Task.user_id == user_id).scalar()
+        )
+        wistful_cutoff = today_start - timedelta(days=WISTFUL_THRESHOLD_DAYS)
+        if most_recent_completion is not None and most_recent_completion < wistful_cutoff:
+            return CatMoodState.WISTFUL
 
     has_activity_today = (
         db.query(Capture.id)

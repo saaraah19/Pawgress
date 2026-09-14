@@ -63,3 +63,28 @@ def log_extraction_call(
         "attempt": attempt,
     }
     logger.info(json.dumps(record))
+
+
+def log_transcription_call(
+    *,
+    model: str,
+    outcome: str,  # "success" | "provider_error"
+    latency_ms: float,
+    audio_seconds: Optional[float],
+) -> None:
+    """Voice capture's equivalent of log_extraction_call — kept as a
+    separate event name ("transcription_call") rather than reusing
+    log_extraction_call with a relabeled outcome, since mixing the two
+    under one event name would make cost-per-feature analysis (Business
+    Model §5, now with a second AI-cost-bearing feature) harder to read
+    later, not easier. Same content rules apply: no user id, no audio, no
+    transcript text — cost/performance signal only."""
+    record = {
+        "event": "transcription_call",
+        "timestamp": time.time(),
+        "model": model,
+        "outcome": outcome,
+        "latency_ms": round(latency_ms, 1),
+        "audio_seconds": audio_seconds,
+    }
+    logger.info(json.dumps(record))

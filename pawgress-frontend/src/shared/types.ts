@@ -8,7 +8,7 @@ export type Priority = "Low" | "Medium" | "High";
 export type TaskStatus = "NotStarted" | "Done";
 export type TaskOrigin = "AIGenerated" | "ManuallyCreated";
 export type CaptureStatus = "Pending" | "Succeeded" | "Failed";
-export type CatMoodState = "Neutral" | "Attentive" | "Content";
+export type CatMoodState = "Neutral" | "Attentive" | "Content" | "Wistful";
 // V2 goal hierarchy (Blueprint §13). Ordinal position matches the backend's
 // GOAL_TIER_RANK — broader scope first. A Goal's tier is optional; a goal
 // with no tier behaves exactly like the original flat MVP goal.
