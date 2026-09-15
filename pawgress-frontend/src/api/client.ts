@@ -18,6 +18,8 @@ import type {
   CalendarStatus,
   CalendarOAuthStart,
   CalendarEvent,
+  PlannerEntry,
+  PlannerPeriodType,
 } from "../shared/types";
 
 const API_BASE_URL: string =
@@ -288,4 +290,27 @@ export function listCalendarEvents(token: string): Promise<CalendarEvent[]> {
 
 export function disconnectCalendar(token: string): Promise<void> {
   return request<void>("/calendar/connection", { method: "DELETE", token });
+}
+
+/** Returns null when nothing's been written for this period yet — a
+ * normal, expected state, not an error. */
+export function getPlannerEntry(
+  periodType: PlannerPeriodType,
+  periodStart: string,
+  token: string
+): Promise<PlannerEntry | null> {
+  return request<PlannerEntry | null>(
+    `/planner?periodType=${periodType}&periodStart=${periodStart}`,
+    { token }
+  );
+}
+
+/** Upsert — creates the entry for this period if it doesn't exist yet,
+ * otherwise updates it. Omit a field entirely to leave it unchanged;
+ * pass an empty string to clear it. */
+export function upsertPlannerEntry(
+  payload: { periodType: PlannerPeriodType; periodStart: string; intention?: string; reflection?: string },
+  token: string
+): Promise<PlannerEntry> {
+  return request<PlannerEntry>("/planner", { method: "PUT", body: payload, token });
 }

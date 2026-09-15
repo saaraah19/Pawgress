@@ -1,10 +1,13 @@
 # Pawgress — Project Progress
 
-**Last updated:** 2026-09-13, Solidification pass — all 6 priorities
-built (Wistful rebuild, Identity/AI-Inbox test coverage, account
-management, mobile/a11y fixes, voice capture, security pass). Real test
-suite runs and an email-provider decision are still owed by Sarah — see
-below.
+**Last updated:** 2026-09-14 — Solidification pass fully verified: 147/147
+backend tests passing, npm test passing, all 6 priorities built and
+confirmed working (including manual verification of voice capture
+through the real UI). Three real bugs found and fixed via actual test
+runs (none catchable by static compile-checking alone) — see the dated
+entries below for what they were and why each slipped through. Still
+outstanding: a real Postgres test run, and an email-provider decision for
+password reset.
 
 ---
 
@@ -98,6 +101,155 @@ schema/DB/security decision requires it (per standing collaboration rule).
 provider for password reset, and — ideally — run the test suite against
 real Postgres at least once given the FK-ordering bug this pass already
 caught once on the *first* multi-table deletion path built.
+
+**Correction, 2026-09-14 (schemas.py import bug):** an earlier edit to
+`identity/schemas.py` had a real bug — a `str_replace` operation deleted
+the actual `class ProfileUpdateRequest(BaseModel):` line while keeping
+its docstring/fields, leaving them orphaned inside
+`PasswordResetConfirmRequest`'s body instead. Python didn't complain (a
+stray docstring is just a legal, harmless expression statement), so this
+only surfaced when Sarah actually ran `pytest` and got an `ImportError`
+on startup — exactly the kind of bug that `py_compile` (syntax-only)
+cannot catch, since the file was syntactically valid the whole time, just
+semantically wrong. Fixed directly in the file.
+
+**First real `pytest` run, 2026-09-14: 142 passed, 5 failed.** Both root
+causes fixed:
+- **4 failures, one root cause**: `TypeError: can't compare offset-naive
+  and offset-aware datetimes` in the Wistful mood check. The original
+  code fetched `max(Task.completed_at)` into Python and compared it
+  there — SQLite hands back a *naive* datetime from that query
+  regardless of how the value was stored (the project's own
+  known-issue class), while the cutoff being compared against was
+  timezone-aware. Every OTHER activity check in `mood_calculator.py`
+  avoids this because it filters in SQL (`.filter(Model.column >=
+  value)`), which defers the comparison to the database and never
+  touches two raw Python datetimes directly — the Wistful check now
+  does the same (rewritten as a SQL filter, which turned out simpler
+  than the original code, not just more correct).
+- **1 failure**: a bug in the *test*, not the app —
+  `test_token_for_deleted_user_is_rejected` took a `user_id` straight
+  from a JSON response (a plain string — JSON has no UUID type) and
+  passed it into a raw DB filter without converting it back to a real
+  `uuid.UUID` first, which the UUID column type's bind processor can't
+  handle. Fixed in the test.
+
+Both are exactly the class of bug that only a real interpreter/test run
+catches — `py_compile` is syntax-only, and code review alone had already
+gone over `mood_calculator.py`'s logic multiple times without catching
+the SQLite-naive-datetime issue, because the *logic* was correct, only
+its interaction with a specific database's driver behavior was wrong.
+**This is the second real bug this pass has now surfaced that a sandbox
+without a real Python interpreter or a real Postgres instance cannot
+catch on its own** (the first being the Goal/Habit deletion FK-ordering
+bug). Worth internalizing as a pattern, not a coincidence: this codebase
+now has two live examples of "passed careful review, failed on first
+real run" — a good argument for running the real suite early and often
+rather than batching it up.
+
+**Outstanding**: full suite is green on SQLite now. Still not run against
+real Postgres — worth doing at least once given the FK-ordering bug was
+also SQLite-invisible.
+
+**Second `pytest` run, 2026-09-14: 145 passed, 2 failed — a third real
+bug, same pattern as the other two.** `companion/schemas.py`'s
+`CompanionStateResponse.mood` field was still a hardcoded
+`Literal["Neutral", "Attentive", "Content"]` — the Wistful rebuild
+updated the `CatMoodState` enum (`mood_calculator.py`) and the frontend
+type (`shared/types.ts`), but this one response schema in between was
+never touched, so any request that actually computed Wistful failed with
+a Pydantic `ValidationError` trying to serialize the response — meaning
+Wistful could never have been observed via the real API at all until
+this fix, only through the mood-calculation function directly. Fixed:
+added `"Wistful"` to the Literal. Also swept the rest of the codebase for
+any other hardcoded copy of that three-value list (found and updated one
+stale comment in `useCompanionBehavior.ts`; found no other functional
+copies).
+
+**Third bug in a row with the identical shape**: a value added in one
+place (an enum, a type) but not propagated to every place that mirrors
+it. Worth naming as a pattern rather than three unlucky coincidences:
+whenever a new enum/union value is introduced, grep the whole codebase
+for the *existing* value list, not just the file being changed — that's
+now the concrete lesson from three real bugs in a row, not an abstract
+"be careful" note.
+
+**Third `pytest` run, 2026-09-14: 147 passed, 0 failed. Full suite green
+on SQLite.** This solidification pass is now verified-working, not just
+built — three real bugs were found and fixed across three consecutive
+runs (Goal/Habit deletion FK ordering, SQLite naive-datetime comparison,
+and the Wistful response schema's stale Literal), none of which were
+catchable by `py_compile`/`tsc` alone. Still outstanding: a real Postgres
+run (the FK-ordering bug specifically was SQLite-invisible, so it's the
+one class of bug this suite's green checkmark can't fully vouch for),
+and the email-provider decision for password reset.
+
+---
+
+## Just Completed: Weekly/Monthly Planner (2026-09-15)
+
+New feature, not on any prior roadmap document — Sarah's direct request.
+Surfaced as a real product-direction question before building anything,
+since the literal phrase "weekly/monthly planner" could plausibly have
+meant a due-date scheduling system (which would have been a genuine
+reversal of several explicit documented decisions: FR/Handover's "no
+due-date field on Task," the Daily View's deliberate non-calendar
+definition). Clarified first: what Sarah actually wants is a lightweight
+intention-setting + reflection ritual, tied to calendar weeks/months —
+much closer in spirit to the already-planned (but unbuilt) Weekly/Monthly
+Review than to a scheduling planner.
+
+**Design, per Sarah's explicit answers to three direct questions:**
+- New top-level page (`/planner`), not folded into Goals or Journal.
+- Free text for the intention (not a structured list).
+- Deliberately NOT linked to the Goal hierarchy — no `goalId`, fully
+  independent. Goals are enduring structure; a planner entry is a
+  recurring ritual container that resets every period. Conflating them
+  would make "Goal" mean two different things depending on context.
+
+**What it is:** one row per user per (period_type, period_start) —
+`intention` and `reflection`, both plain nullable text, both editable at
+any time regardless of where you are in the period (no "you can't
+reflect until the week ends" gate — that would be exactly the kind of
+manual-system-maintenance friction the whole product exists to remove).
+No completion/fill-rate tracking of any kind — an empty period is just an
+empty period, never flagged, never nudged.
+
+**New backend module** (`planner/`): one table (`planner_entries`,
+migration `e3f2a9c17d84`), two endpoints (`GET` returns null — not
+404 — for an unset period; `PUT` upserts, partial-update semantics via
+`exclude_unset`, same pattern as `update_task`/`update_habit`). Reuses
+the exact Sunday-start week convention already established in
+`habits/routes.py` so the two features never disagree about what "this
+week" means.
+
+**Caught during review, before shipping**: the `PlannerPeriodType` enum
+column was missing `values_callable=lambda x: [e.value for e in x]` —
+without it, SQLAlchemy stores the enum's Python *name* ("WEEK") rather
+than its *value* ("Week"), which would have mismatched the Postgres enum
+labels the migration actually creates. `habits/models.py`'s
+`HabitFrequency` column already has this and was used as the reference
+— this is a direct instance of the exact lesson written into this file's
+Solidification Pass entry the day before ("grep the whole codebase for
+the existing pattern, not just the file being changed") actually being
+applied, not just documented.
+
+**New frontend page** (`PlannerPage.tsx`): Week/Month toggle reusing the
+exact existing `.view-toggle` pattern (Habits' Today/All-Tasks toggle),
+period navigation matching Habits' week-nav exactly. Nav bar now has 7
+items (was 6) — not flagged as a blocker, but worth keeping in mind if
+more top-level pages get added later.
+
+**Tests**: `tests/test_planner.py` — get-returns-null-not-404,
+upsert-creates-then-updates-not-duplicates, partial-update semantics,
+period normalization (any date in a week/month resolves to the same
+entry, verified against real calendar dates), Week/Month independence
+for the same calendar range, per-user scoping.
+
+**Verified**: `py_compile` clean across the new module, `tsc -b --noEmit`
+clean across the frontend. **Not yet run**: the real `pytest`/`npm test`
+suites against this new code — needs the same `alembic upgrade head` +
+real test run as everything else, migration `e3f2a9c17d84` this time.
 
 ---
 

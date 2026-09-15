@@ -4,6 +4,7 @@ import { useAuth } from "../../features/auth/AuthContext";
 
 const NAV_ITEMS: { to: string; label: string; end?: boolean }[] = [
   { to: "/", label: "Today", end: true },
+  { to: "/planner", label: "Planner" },
   { to: "/goals", label: "Goals" },
   { to: "/journal", label: "Journal" },
   { to: "/habits", label: "Habits" },

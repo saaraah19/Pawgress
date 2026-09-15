@@ -27,7 +27,6 @@ tradeoffs.
 import enum
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from productivity.models import Task, Capture
@@ -133,11 +132,26 @@ def calculate_mood(db: Session, user_id) -> CatMoodState:
         db.query(Task.id).filter(Task.user_id == user_id, Task.completed_at.isnot(None)).first() is not None
     )
     if has_completed_ever:
-        most_recent_completion = (
-            db.query(func.max(Task.completed_at)).filter(Task.user_id == user_id).scalar()
-        )
+        # Deliberately a SQL filter, not "fetch the max completed_at into
+        # Python and compare it there" — that was the original approach
+        # here and it broke on SQLite specifically: SQLite hands back a
+        # naive datetime from func.max() regardless of how the value was
+        # stored (a known issue class for this project, per PROGRESS.md),
+        # so comparing it against a timezone-aware wistful_cutoff in
+        # Python raised "can't compare offset-naive and offset-aware
+        # datetimes" — caught by a real pytest run, not by anything in
+        # this sandbox. Every OTHER activity check in this function
+        # already avoids this by using a SQL filter (the comparison
+        # happens inside the database, never as two raw Python datetime
+        # objects) — this now does the same.
         wistful_cutoff = today_start - timedelta(days=WISTFUL_THRESHOLD_DAYS)
-        if most_recent_completion is not None and most_recent_completion < wistful_cutoff:
+        has_completed_recently = (
+            db.query(Task.id)
+            .filter(Task.user_id == user_id, Task.completed_at >= wistful_cutoff)
+            .first()
+            is not None
+        )
+        if not has_completed_recently:
             return CatMoodState.WISTFUL
 
     has_activity_today = (

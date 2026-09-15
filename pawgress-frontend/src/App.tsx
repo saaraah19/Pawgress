@@ -5,6 +5,7 @@ import { ForgotPasswordPage } from "./features/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
 import { RequireAuth } from "./features/auth/RequireAuth";
 import { CapturePage } from "./features/capture/CapturePage";
+import { PlannerPage } from "./features/planner/PlannerPage";
 import { GoalsPage } from "./features/goals/GoalsPage";
 import { JournalPage } from "./features/journal/JournalPage";
 import { HabitsPage } from "./features/habits/HabitsPage";
@@ -25,6 +26,16 @@ export function App() {
           <RequireAuth>
             <AppShell>
               <CapturePage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/planner"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <PlannerPage />
             </AppShell>
           </RequireAuth>
         }

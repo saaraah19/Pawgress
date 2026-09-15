@@ -12,3 +12,4 @@ export const JOURNAL_QUERY_KEY = ["journal"] as const;
 export const HABITS_QUERY_KEY = ["habits"] as const;
 export const CALENDAR_STATUS_QUERY_KEY = ["calendar", "status"] as const;
 export const CALENDAR_EVENTS_QUERY_KEY = ["calendar", "events"] as const;
+export const PLANNER_QUERY_KEY = ["planner"] as const;

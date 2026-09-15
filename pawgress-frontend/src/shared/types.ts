@@ -164,3 +164,20 @@ export interface CalendarEvent {
   allDay: boolean;
   location: string | null;
 }
+
+// --- planner/schemas.py — Weekly/Monthly Planner (2026-09-15) ---
+export type PlannerPeriodType = "Week" | "Month";
+
+// Deliberately independent of Goal (no goalId field, unlike Habit/Task)
+// per Sarah's explicit call: a recurring ritual container, not enduring
+// structure. Both fields are always editable regardless of where you are
+// in the period — no timing gate on when intention vs. reflection can be
+// written.
+export interface PlannerEntry {
+  id: string;
+  periodType: PlannerPeriodType;
+  periodStart: string; // ISO date — the containing Sunday for Week, the 1st for Month
+  intention: string | null;
+  reflection: string | null;
+  updatedAt: string;
+}

@@ -4,8 +4,8 @@
  * Implements companion-character-spec.md §5's four behavior layers, scoped
  * to what v1's flattened-PNG assets actually support:
  *
- *  A — backend mood (Neutral/Attentive/Content). NOT fetched here — passed
- *      in as a plain argument, so this hook stays testable without a
+ *  A — backend mood (Neutral/Attentive/Content/Wistful). NOT fetched here —
+ *      passed in as a plain argument, so this hook stays testable without a
  *      network mock and has no opinion on how the caller sources it.
  *  B — frontend personality/expression state: weighted random selection
  *      over COMPANION_EXPRESSION_WEIGHTS, never a lookup table. Rerolls

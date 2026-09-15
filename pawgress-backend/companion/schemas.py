@@ -18,4 +18,15 @@ from pydantic import BaseModel
 
 
 class CompanionStateResponse(BaseModel):
-    mood: Literal["Neutral", "Attentive", "Content"]
+    # Wistful added 2026-09-13 — companion/mood_calculator.py's
+    # CatMoodState enum was updated for the Wistful rebuild, but this
+    # response schema's own Literal type was never updated to match, so
+    # every response that computed Wistful raised a pydantic
+    # ValidationError instead of ever reaching the client. Caught by a
+    # real pytest run, not by py_compile (a Literal mismatch is a runtime
+    # validation error, not a syntax error) and not by code review either
+    # — I updated the enum and the frontend type but missed this one
+    # schema in between, which is exactly the kind of single-file miss
+    # that a real request/response round trip catches and static review
+    # doesn't.
+    mood: Literal["Neutral", "Attentive", "Content", "Wistful"]

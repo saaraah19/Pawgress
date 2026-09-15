@@ -133,7 +133,14 @@ def test_token_for_deleted_user_is_rejected(client, session_factory):
     email = f"user_{uuid.uuid4().hex[:8]}@example.com"
     register_response = client.post("/auth/register", json={"email": email, "password": "correct-horse-battery"})
     token = register_response.json()["access_token"]
-    user_id = register_response.json()["user_id"]
+    # JSON has no UUID type — the response gives back a plain string.
+    # Converting back to a real uuid.UUID before using it in a raw DB
+    # filter (caught by an actual pytest run: passing the bare string
+    # through raised AttributeError('str' object has no attribute 'hex')
+    # from the UUID column type's bind processor — a bug in this test,
+    # not in the app, since every real code path gets a proper UUID
+    # object from the ORM, never a JSON string).
+    user_id = uuid.UUID(register_response.json()["user_id"])
 
     db = session_factory()
     try:
