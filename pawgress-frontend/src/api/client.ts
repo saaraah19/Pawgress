@@ -20,6 +20,7 @@ import type {
   CalendarEvent,
   PlannerEntry,
   PlannerPeriodType,
+  GamificationState,
 } from "../shared/types";
 
 const API_BASE_URL: string =
@@ -313,4 +314,8 @@ export function upsertPlannerEntry(
   token: string
 ): Promise<PlannerEntry> {
   return request<PlannerEntry>("/planner", { method: "PUT", body: payload, token });
+}
+
+export function getGamificationState(token: string): Promise<GamificationState> {
+  return request<GamificationState>("/gamification/state", { token });
 }

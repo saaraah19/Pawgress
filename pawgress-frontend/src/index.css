@@ -589,6 +589,8 @@ button.link:disabled {
    instances on screen at once — moot now that there's only ever one.) */
 .task-list-companion {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   margin: 0 auto var(--space-5);
 }
@@ -1204,6 +1206,117 @@ button.link:disabled {
 
 .planner-field {
   margin-bottom: var(--space-5);
+}
+
+/* Gamification (2026-09-16) */
+.level-indicator {
+  display: block;
+  margin-top: var(--space-2);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.level-indicator:hover {
+  color: var(--color-assistant);
+}
+
+.progress-card {
+  max-width: 560px;
+}
+
+.progress-level-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.progress-level-number {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--color-text);
+}
+
+.progress-bar-track {
+  width: 100%;
+  max-width: 20rem;
+  height: 0.5rem;
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--color-assistant);
+  transition: width var(--duration-quick) var(--ease-quiet);
+}
+
+.progress-xp-label {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.progress-section {
+  margin-bottom: var(--space-6);
+}
+
+.progress-section h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-3);
+  color: var(--color-text);
+}
+
+.progress-item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-3);
+}
+
+.progress-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  text-align: left;
+  cursor: default;
+}
+
+button.progress-item {
+  cursor: pointer;
+}
+
+button.progress-item:not(.is-locked):hover {
+  border-color: var(--color-assistant);
+}
+
+.progress-item.is-selected {
+  border-color: var(--color-assistant);
+  background: var(--color-assistant-tint);
+}
+
+.progress-item.is-locked {
+  opacity: 0.5;
+}
+
+.progress-item-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.progress-item-detail {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
 }
 
 .habit-form {

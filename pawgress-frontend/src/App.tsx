@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "./features/auth/LoginPage";
 import { RegisterPage } from "./features/auth/RegisterPage";
@@ -6,6 +7,8 @@ import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
 import { RequireAuth } from "./features/auth/RequireAuth";
 import { CapturePage } from "./features/capture/CapturePage";
 import { PlannerPage } from "./features/planner/PlannerPage";
+import { ProgressPage } from "./features/gamification/ProgressPage";
+import { applyStoredThemeAccentOnLoad } from "./features/gamification/themeAccents";
 import { GoalsPage } from "./features/goals/GoalsPage";
 import { JournalPage } from "./features/journal/JournalPage";
 import { HabitsPage } from "./features/habits/HabitsPage";
@@ -14,6 +17,13 @@ import { AccountPage } from "./features/account/AccountPage";
 import { AppShell } from "./shared/ui/AppShell";
 
 export function App() {
+  // Applies a previously-unlocked-and-chosen theme accent (if any) on
+  // every load, before anything else renders with the default palette —
+  // see themeAccents.ts. Client-side only, no backend call.
+  useEffect(() => {
+    applyStoredThemeAccentOnLoad();
+  }, []);
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -36,6 +46,16 @@ export function App() {
           <RequireAuth>
             <AppShell>
               <PlannerPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/progress"
+        element={
+          <RequireAuth>
+            <AppShell>
+              <ProgressPage />
             </AppShell>
           </RequireAuth>
         }

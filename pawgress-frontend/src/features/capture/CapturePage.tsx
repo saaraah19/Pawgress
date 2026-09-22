@@ -7,6 +7,7 @@ import { CaptureResult } from "./CaptureResult";
 import { TaskList } from "../tasks/TaskList";
 import { TASKS_QUERY_KEY } from "../../shared/queryKeys";
 import { CompanionCharacter, type CompanionCharacterHandle } from "../companion/CompanionCharacter";
+import { LevelIndicator } from "../gamification/LevelIndicator";
 import type { CaptureResult as CaptureResultType } from "../../shared/types";
 
 export function CapturePage() {
@@ -91,6 +92,7 @@ export function CapturePage() {
         */}
         <div className="task-list-companion">
           <CompanionCharacter ref={companionRef} size={110} />
+          <LevelIndicator />
         </div>
         <TaskList />
       </div>

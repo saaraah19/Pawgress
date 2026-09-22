@@ -186,6 +186,70 @@ and the email-provider decision for password reset.
 
 ---
 
+## Just Completed: XP / Level / Unlockables (2026-09-16)
+
+Blueprint §13's own V2 list, built now that the core loop is proven:
+"Light gamification: XP and a small number of meaningful, non-essential
+unlockables." Not a reversal of anything — this was always planned,
+just correctly sequenced after everything else.
+
+**Zero schema changes, zero migration.** XP and level are computed live
+from lifetime Task + Habit completions
+(`gamification/routes.py`) — the exact same "derive from permanent
+history, never a new stored field" pattern `companion/mood_calculator.py`
+already uses for mood, and that `companion-character-spec.md` §5.E
+explicitly reserved for a future companion "Growth stage." 1 XP per
+completion (task or habit, no weighting), level curve is
+`xp_for_level(n) = 10*(n-1)^2` — verified by hand against real numbers at
+every boundary (level 2 at 10 XP, level 3 at 40, etc.), not just trusted
+from the formula.
+
+**A constraint named directly to Sarah before building, not discovered
+after**: I can't generate new companion cosmetic artwork matching the
+commissioned painterly style (`companion-character-spec.md`'s model
+sheet) — that needs a real illustrator, same as the original art did.
+So "unlockables" are two things actually buildable well: a small set of
+**UI accent color themes** (swap `--color-assistant`'s hue app-wide,
+client-side only via localStorage, no backend persistence needed at all)
+and simple **abstract line-art badges** (pure display, no cat
+illustration). Both stay inside the existing warm-neutral "no red"
+palette system. If real cat cosmetic art gets commissioned later, this
+same catalog/unlock system slots it in without a redesign.
+
+**Hard constraints preserved, enforced structurally not just by
+convention**: XP only ever goes up or down honestly with the real
+completions behind it (undoing a completion removes its XP — verified by
+test, mirrors the equivalent mood-calculator test) — there's no separate
+"achievement" ledger that could drift from reality. No streak, no
+leaderboard (every query is scoped to the single requesting user, no
+cross-user query exists anywhere in this module). No spendable currency,
+no "shop" with a price — items unlock automatically at a level
+threshold. No manufactured scarcity — the full catalog is always visible,
+locked items show their threshold rather than being hidden or having a
+"limited time" framing.
+
+**UI placement, my call**: no 8th nav item (already flagged 7 as
+crowded) — a small, quiet level indicator next to the companion on the
+Daily View, tapping through to a full `/progress` page (level bar,
+accent picker, badge shelf).
+
+**Tests** (`tests/test_gamification.py`): zero-state for a new user,
+task/habit completions both count, undoing a completion removes its XP,
+reaching level 2 unlocks the first badge (and confirms a level-3 item
+stays locked), the default theme is always unlocked, per-user scoping,
+and a check that deleting a habit removes its completions' XP too — this
+last one works correctly regardless of whether SQLite actually enforces
+the DB-level `ON DELETE CASCADE`, because the query's `INNER JOIN`
+against `Habit` structurally excludes orphaned completions either way
+(noticed and reasoned through explicitly, not assumed).
+
+**Verified**: `py_compile` clean across the new module, `tsc -b --noEmit`
+clean across the whole frontend, level formula boundaries checked by
+hand against real numbers. **Not yet run**: real `pytest`/`npm test`
+against this new code.
+
+---
+
 ## Just Completed: Weekly/Monthly Planner (2026-09-15)
 
 New feature, not on any prior roadmap document — Sarah's direct request.
@@ -250,6 +314,35 @@ for the same calendar range, per-user scoping.
 clean across the frontend. **Not yet run**: the real `pytest`/`npm test`
 suites against this new code — needs the same `alembic upgrade head` +
 real test run as everything else, migration `e3f2a9c17d84` this time.
+
+**Migration failure on real Postgres, 2026-09-15**: `psycopg.errors.
+DuplicateObject: type "plannerperiodtype" already exists`. Root cause: I
+wrote the migration with an explicit
+`period_type_enum.create(bind, checkfirst=True)` call AND embedded the
+same `ENUM(...)` object directly in `create_table`'s column list —
+`create_table` triggers Postgres enum creation automatically as part of
+its own DDL (that's the actual mechanism, not the explicit `.create()`
+call), so the enum got created twice in the same transaction, and the
+second attempt has no `checkfirst` protection. **This is a class of bug
+SQLite structurally cannot catch** — SQLite has no native enum type to
+conflict over, so every enum-column migration in this codebase can only
+ever be verified against real Postgres, never SQLite. Fixed by matching
+the proven-working pattern from the habits migration (`3590ee8e620b`)
+exactly: no separate `.create()` call at all, just the `ENUM(...)`
+object embedded in `create_table`, with `checkfirst=True` used only in
+`downgrade()`'s explicit drop. Transactional DDL means the failed run
+should have rolled back cleanly with nothing orphaned in the database —
+worth a quick `\dT` check before retrying regardless, rather than
+assuming.
+
+**Fourth real bug now, and the second Postgres-only one** (the first
+being the Goal/Habit deletion FK-ordering bug). Worth stating plainly:
+this project now has two confirmed classes of bug that a SQLite-backed
+test suite cannot catch at all, no matter how green it is — foreign-key
+enforcement, and native enum-type handling. The Solidification Pass entry
+above already recommended a real Postgres test run "at least once"; this
+migration failure is a second, independent argument for actually doing
+that, not just a one-off curiosity.
 
 ---
 

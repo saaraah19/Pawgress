@@ -181,3 +181,26 @@ export interface PlannerEntry {
   reflection: string | null;
   updatedAt: string;
 }
+
+// --- gamification/schemas.py — XP/Level (2026-09-16) ---
+// Nothing here is persisted server-side — computed live from Task/Habit
+// completions, same "derive, don't store" pattern as CatMoodState.
+export type UnlockableKind = "theme_accent" | "badge";
+
+export interface UnlockableItem {
+  id: string;
+  kind: UnlockableKind;
+  name: string;
+  description: string;
+  unlockLevel: number;
+  unlocked: boolean;
+}
+
+export interface GamificationState {
+  completions: number;
+  xp: number;
+  level: number;
+  xpForCurrentLevel: number;
+  xpForNextLevel: number;
+  items: UnlockableItem[];
+}

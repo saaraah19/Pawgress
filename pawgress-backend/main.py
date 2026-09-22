@@ -19,6 +19,7 @@ from journal.routes import router as journal_router
 from habits.routes import router as habits_router
 from calendar_integration.routes import router as calendar_router
 from planner.routes import router as planner_router
+from gamification.routes import router as gamification_router
 
 settings.validate()  # fail loudly at startup if required env vars are missing
 
@@ -51,6 +52,7 @@ app.include_router(journal_router)
 app.include_router(habits_router)
 app.include_router(calendar_router)
 app.include_router(planner_router)
+app.include_router(gamification_router)
 
 
 @app.get("/health")
